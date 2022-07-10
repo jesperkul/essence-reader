@@ -8,9 +8,7 @@
 	<title>Essence Reader</title>
 
 	<script>
-		if (localStorage.getItem("theme") !== null) {
-			document.documentElement.setAttribute("data-theme", localStorage.getItem("theme"));
-		}
+		document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 	</script>
 
 	<link rel='icon' type='image/png' href='./favicon.png'>

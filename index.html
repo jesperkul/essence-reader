@@ -2,23 +2,22 @@
 <html lang="en">
 
 <head>
-	<meta charset='utf-8'>
-	<meta name='viewport' content='width=device-width,initial-scale=1'>
-
+	<meta charset="UTF-8" />
+	<link rel='icon' type='image/png' href='/essence-reader/favicon.png'>
+	<link rel='stylesheet' href='/essence-reader/global.css'>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>Essence Reader</title>
 
 	<script>
 		document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 	</script>
-
-	<link rel='icon' type='image/png' href='./favicon.png'>
-	<link rel='stylesheet' href='./global.css'>
-	<link rel='stylesheet' href='./build/bundle.css'>
-
-	<script defer src='./build/bundle.js'></script>
+  <script type="module" crossorigin src="/essence-reader/assets/index.4e6fad5a.js"></script>
+  <link rel="stylesheet" href="/essence-reader/assets/index.1a53e89e.css">
 </head>
 
 <body>
+	<div id="app"></div>
+	
 </body>
 
 </html>

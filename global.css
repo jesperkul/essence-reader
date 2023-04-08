@@ -7,37 +7,36 @@ body {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-	background: var(--primary-bg);
-	color: var(--primary-color);
+	background: rgb(var(--primary-bg));
+	color: rgb(var(--primary-color));
 	transition: background-color 0.5s, color 0.5s;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
 #container a, #container p, #container span {
 	color: var(--primary-color) !important;
-	transition: color 0.5s;
 }
 
 :root {
-	--primary-color: #000;
-	--primary-bg: #fff;
+	--primary-color: 0, 0, 0;
+	--primary-bg: 255, 255, 255;
 	--secondary-bg: 249, 249, 249;
 }
 
 [data-theme="dark"] {
-	--primary-color: #e9e9e9;
-	--primary-bg: #032038;
+	--primary-color: 233, 233, 233;
+	--primary-bg: 3, 32, 56;
     --secondary-bg: 7, 37, 62;
 }
 
 [data-theme="warm"] {
-	--primary-color: #000;
-	--primary-bg: #f6e4bd;
+	--primary-color: 0, 0, 0;
+	--primary-bg: 246, 228, 189;
     --secondary-bg: 251, 238, 210;
 }
 
 [data-theme="black"] {
-	--primary-color: #e9e9e9;
-	--primary-bg: #000;
+	--primary-color: 233, 233, 233;
+	--primary-bg: 0, 0, 0;
     --secondary-bg: 28, 32, 34;
 }

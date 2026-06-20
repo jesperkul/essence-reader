@@ -13,7 +13,7 @@ export const readFile = async (file: File) => {
 		const { meta, book } = await parseEpub(file);
 		let id = '';
 
-		if (get(shouldSaveStore) && file.size < 30000000) {
+		if (get(shouldSaveStore)) {
 			id = await addBook(meta, book);
 		}
 

@@ -15,7 +15,7 @@
 	},
 	"devDependencies": {
 		"@iconify-json/carbon": "^1.2.23",
-		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.66.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"prettier": "^3.8.4",

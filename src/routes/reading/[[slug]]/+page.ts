@@ -1,4 +1,4 @@
-export const ssr = false;
+export const prerender = false;
 import type { PageLoad } from './$types';
 import { getLoaded, setLoaded } from '$lib/stores';
 import { error } from '@sveltejs/kit';

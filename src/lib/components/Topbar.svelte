@@ -82,8 +82,8 @@
 		position: fixed;
 		background: rgba(var(--secondary-bg), 0.8);
 		touch-action: manipulation;
-		backdrop-filter: blur(15px);
 		-webkit-backdrop-filter: blur(15px);
+		backdrop-filter: blur(15px);
 		transition:
 			background-color 0.5s,
 			color 0.5s;

@@ -26,12 +26,12 @@
 	}
 </script>
 
-<button class="popoverBtn" bind:this={button} onclick={() => (visible = !visible)}>
+<button class="drawerBtn" bind:this={button} onclick={() => (visible = !visible)}>
 	{@render icon()}
 </button>
 
 {#if visible}
-	<div transition:fly={{ x: 50, duration: 200 }} class="popover" use:clickOutside>
+	<div transition:fly={{ x: 50, duration: 200 }} class="drawer" use:clickOutside>
 		<!-- Wrapper needed since WebKit on iOS cuts off content when scrolling otherwise -->
 		<!-- See: https://stackoverflow.com/questions/26704903/only-in-safari-positionfixed-child-cut-off-when-parent-is-positionfixed-and -->
 		<div class="wrapper">
@@ -41,7 +41,7 @@
 {/if}
 
 <style>
-	.popover {
+	.drawer {
 		position: fixed;
 		padding: 1em;
 		background: rgba(var(--secondary-bg), 0.8);
@@ -65,12 +65,12 @@
 		height: 100%;
 	}
 
-	.popoverBtn > :global(*) {
+	.drawerBtn > :global(*) {
 		pointer-events: none;
 	}
 
 	@supports not ((-webkit-backdrop-filter: blur(5px)) or (backdrop-filter: blur(5px))) {
-		.popover {
+		.drawer {
 			background-color: rgb(var(--secondary-bg));
 		}
 	}

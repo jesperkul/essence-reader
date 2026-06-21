@@ -4,7 +4,7 @@
 	import type { Metadata } from '$lib/types';
 	import { onMount } from 'svelte';
 	import Topbar from '$lib/components/Topbar.svelte';
-	import Popover from '$lib/components/Popover.svelte';
+	import Drawer from '$lib/components/Drawer.svelte';
 	import CarbonSettings from '~icons/carbon/settings';
 	import ThemePicker from '$lib/components/ThemePicker.svelte';
 	import { flip } from 'svelte/animate';
@@ -76,7 +76,7 @@
 		<h3>Essence Reader</h3>
 	{/snippet}
 	{#snippet rightbar()}
-		<Popover>
+		<Drawer>
 			{#snippet icon()}
 				<CarbonSettings />
 			{/snippet}
@@ -97,7 +97,7 @@
 				</button>
 				<ThemePicker />
 			</div>
-		</Popover>
+		</Drawer>
 	{/snippet}
 </Topbar>
 

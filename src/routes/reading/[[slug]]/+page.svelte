@@ -4,7 +4,7 @@
 	import type { Book, Metadata } from '$lib/types';
 	import Topbar from '$lib/components/Topbar.svelte';
 	import ReaderSettings from './ReaderSettings.svelte';
-	import Popover from '$lib/components/Popover.svelte';
+	import Drawer from '$lib/components/Drawer.svelte';
 	import { assembleChapter } from './reader';
 
 	// Icons:
@@ -243,20 +243,20 @@
 					{previousJumps[previousJumps.length - 1]}
 				</button>
 			{/if}
-			<Popover>
+			<Drawer>
 				{#snippet icon()}
 					<CarbonTableOfContents />
 				{/snippet}
 				{#each book.toc as tocitem}
 					<TocNode {tocitem} onClick={jumpTo} currentSection={section} />
 				{/each}
-			</Popover>
-			<Popover>
+			</Drawer>
+			<Drawer>
 				{#snippet icon()}
 					<CarbonSettings />
 				{/snippet}
 				<ReaderSettings bind:settings onScaleChange={updateAfterResize} />
-			</Popover>
+			</Drawer>
 			<button onclick={() => incrementSection(-1)}><CarbonArrowLeft /></button>
 			<button onclick={() => incrementSection(1)}><CarbonArrowRight /></button>
 		{/snippet}

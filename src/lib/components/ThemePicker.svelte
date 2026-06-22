@@ -1,9 +1,5 @@
 <script lang="ts">
-	const setTheme = (theme: string) => {
-		document.documentElement.setAttribute('data-theme', theme);
-		localStorage.setItem('theme', theme);
-		currentTheme = theme;
-	};
+	import { themeStore } from '$lib/stores';
 
 	const themes = [
 		{ name: 'Light', color: '#fff', value: 'light' },
@@ -11,8 +7,6 @@
 		{ name: 'Warm', color: '#f6e4bd', value: 'warm' },
 		{ name: 'Dark', color: '#032038', value: 'dark' }
 	];
-
-	let currentTheme = $state(localStorage.getItem('theme') || 'light');
 </script>
 
 <div>
@@ -20,8 +14,8 @@
 	<div class="theme-picker">
 		{#each themes as theme}
 			<button
-				onclick={() => setTheme(theme.value)}
-				class={theme.value === currentTheme ? 'theme-button active' : 'theme-button'}>
+				onclick={() => themeStore.set(theme.value)}
+				class={theme.value === $themeStore ? 'theme-button active' : 'theme-button'}>
 				<div class="theme-preview" style="background-color: {theme.color};"></div>
 				<span>{theme.name}</span>
 			</button>

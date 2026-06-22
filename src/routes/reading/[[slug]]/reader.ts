@@ -20,7 +20,8 @@ const injectStyles = (styles: string[]) => {
 const processCSS = async (
 	css: string,
 	cssPath: string,
-	entries: ZipInfo['entries']
+	entries: ZipInfo['entries'],
+	registerBlobUrl: (url: string) => void
 ): Promise<string> => {
 	const urlRegex = /url\(([^)]+)\)/g;
 
@@ -29,8 +30,9 @@ const processCSS = async (
 		const filename = relativeToAbs(relPath, cssPath);
 		try {
 			const blob = await entries[filename].blob();
-			const url = URL.createObjectURL(blob);
-			css = css.replace(match, `url("${url}")`);
+			const blobUrl = URL.createObjectURL(blob);
+			registerBlobUrl(blobUrl);
+			css = css.replace(match, `url("${blobUrl}")`);
 		} catch (e) {
 			console.error(e);
 			continue;
@@ -48,7 +50,8 @@ const domParser = new DOMParser();
 export const assembleChapter = async (
 	chapterPath: string,
 	entries: ZipInfo['entries'],
-	jumpTo: (href: string) => void
+	jumpTo: (href: string) => void,
+	registerBlobUrl: (url: string) => void
 ): Promise<HTMLElement> => {
 	const html = await entries[chapterPath].text();
 
@@ -68,7 +71,7 @@ export const assembleChapter = async (
 			if (!href) continue;
 			const filename = relativeToAbs(href, chapterPath);
 			const css = await entries[filename].text();
-			styles.push(await processCSS(css, filename, entries));
+			styles.push(await processCSS(css, filename, entries, registerBlobUrl));
 		} else {
 			styles.push(e.innerHTML);
 		}
@@ -98,7 +101,9 @@ export const assembleChapter = async (
 		if (url && !url.includes('http')) {
 			const filename = relativeToAbs(url, chapterPath);
 			const blob = await entries[filename].blob();
-			e.setAttribute(attribute, URL.createObjectURL(blob));
+			const blobUrl = URL.createObjectURL(blob);
+			registerBlobUrl(blobUrl);
+			e.setAttribute(attribute, blobUrl);
 
 			// Fixes some SVGs not playing nicely
 			if (e.parentElement?.tagName.toLowerCase() === 'svg') {

@@ -20,8 +20,8 @@
 	import TocNode from './TocNode.svelte';
 
 	const { data } = $props();
-	let meta: Metadata = data.meta;
-	let book: Book = data.book;
+	let meta: Metadata = $derived(data.meta);
+	let book: Book = $derived(data.book);
 
 	let container: HTMLElement;
 	let section: number = $state(0);
@@ -49,6 +49,12 @@
 	let entries: ZipInfo['entries'];
 	let previousJumps: number[] = $state([]);
 
+	let blobUrls: string[] = [];
+
+	const registerBlobUrl = (url: string) => {
+		blobUrls.push(url);
+	};
+
 	onMount(async () => {
 		try {
 			entries = (await unzip(book.file)).entries;
@@ -65,17 +71,23 @@
 
 	onDestroy(() => {
 		document.head.querySelectorAll('.essence-reader').forEach((styleE) => styleE.remove());
+		blobUrls.forEach(URL.revokeObjectURL);
 	});
 
 	const updateSection = async (index: number) => {
 		if (0 <= index && index < book.spine.length) {
+			blobUrls.forEach(URL.revokeObjectURL);
+			blobUrls = [];
+
 			section = index;
 			scrolled = 0;
 			meta.progress = section;
 			if (meta.id) {
 				(await openBookDB).put('metas', $state.snapshot(data.meta));
 			}
-			container.replaceChildren(await assembleChapter(book.spine[section], entries, jumpTo));
+			container.replaceChildren(
+				await assembleChapter(book.spine[section], entries, jumpTo, registerBlobUrl)
+			);
 		}
 	};
 

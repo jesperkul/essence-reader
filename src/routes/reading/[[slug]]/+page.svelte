@@ -289,7 +289,7 @@
 
 <style>
 	#container {
-		transform-origin: top;
+		zoom: var(--scale);
 		margin: auto;
 	}
 
@@ -302,7 +302,7 @@
 
 	#container :global(img),
 	#container :global(svg) {
-		max-height: calc(calc(100vh - 6em) / max(var(--scale), 1));
+		max-height: calc(100vh - 6em);
 		max-width: 100%;
 		object-fit: scale-down;
 	}
@@ -313,21 +313,19 @@
 		column-gap: 4em;
 		width: auto;
 		margin-bottom: 2em;
-		height: calc(calc(100vh - 5em) / max(var(--scale), 1));
+		height: 100%;
 		overflow: hidden;
 	}
 
 	.scrolled {
 		padding-top: 3em;
 		padding-bottom: 2em;
-		transform: scale(var(--scale));
-		transform-origin: top;
-		width: calc(50% / var(--scale));
+		width: 50%;
 	}
 
 	@media (max-width: 1000px) {
 		.scrolled {
-			width: calc(90% / max(var(--scale), 1));
+			width: 90%;
 		}
 
 		/* Doesn't work with iOS, so recommending scrolled
@@ -341,10 +339,9 @@
 	#containerContainer {
 		overflow: hidden;
 		margin: auto;
-		transform: scale(var(--scale));
-		transform-origin: top;
-		width: calc(90% / max(var(--scale), 1));
-		padding-top: calc(3em / var(--scale));
+		height: calc(100vh - 5em);
+		width: 90%;
+		padding-top: 3em;
 	}
 
 	#jumpbtn {

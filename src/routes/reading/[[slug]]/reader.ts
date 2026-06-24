@@ -1,22 +1,6 @@
 import { relativeToAbs } from '$lib/utils';
 import type { ZipInfo } from 'unzipit';
 
-const injectStyles = (styles: string[]) => {
-	// TODO: Keep track of stylesheets and only update if changed
-	const fragment = document.createDocumentFragment();
-
-	document.head.querySelectorAll('.essence-reader').forEach((styleE) => styleE.remove());
-
-	styles.forEach((stylesheet) => {
-		const styleE = document.createElement('style');
-		styleE.innerText = nestCSSSelectors(stylesheet);
-		styleE.className = 'essence-reader';
-		fragment.appendChild(styleE);
-	});
-
-	document.head.appendChild(fragment);
-};
-
 const processCSS = async (
 	css: string,
 	cssPath: string,
@@ -28,6 +12,9 @@ const processCSS = async (
 	const matches = css.matchAll(urlRegex);
 	for (const [match, relPath] of matches) {
 		const filename = relativeToAbs(relPath, cssPath);
+		if (!entries[filename]) {
+			continue;
+		}
 		try {
 			const blob = await entries[filename].blob();
 			const blobUrl = URL.createObjectURL(blob);
@@ -42,17 +29,15 @@ const processCSS = async (
 	return css;
 };
 
-const nestCSSSelectors = (css: string): string =>
-	css.replace(/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g, '#container $1$2');
-
 const domParser = new DOMParser();
 
 export const assembleChapter = async (
 	chapterPath: string,
 	entries: ZipInfo['entries'],
-	jumpTo: (href: string) => void,
-	registerBlobUrl: (url: string) => void
-): Promise<HTMLElement> => {
+	registerBlobUrl: (url: string) => void,
+	customCSS: string,
+	rootAttributes: Record<string, string>
+): Promise<string> => {
 	const html = await entries[chapterPath].text();
 
 	let newHTML = domParser.parseFromString(html, 'application/xhtml+xml');
@@ -64,42 +49,40 @@ export const assembleChapter = async (
 		newHTML = domParser.parseFromString(html, 'text/html');
 	}
 
-	const styles: string[] = [];
+	newHTML.querySelectorAll('script').forEach((script) => script.remove());
+
 	for (const e of newHTML.head.querySelectorAll('link[rel="stylesheet"], style')) {
 		if (e.tagName.toLowerCase() === 'link') {
 			const href = e.getAttribute('href');
 			if (!href) continue;
 			const filename = relativeToAbs(href, chapterPath);
-			const css = await entries[filename].text();
-			styles.push(await processCSS(css, filename, entries, registerBlobUrl));
+
+			if (entries[filename]) {
+				let css = await entries[filename].text();
+				css = await processCSS(css, filename, entries, registerBlobUrl);
+
+				const styleE = newHTML.createElement('style');
+				styleE.innerHTML = css;
+				newHTML.head.appendChild(styleE);
+			}
 		} else {
-			styles.push(e.innerHTML);
+			const styleE = newHTML.createElement('style');
+			styleE.innerHTML = e.innerHTML;
+			newHTML.head.appendChild(styleE);
 		}
+
+		e.remove();
 	}
 
-	injectStyles(styles);
-
-	// Process all URLs in the chapter
-	for (const e of newHTML.body.querySelectorAll('[src], svg image, a[href]')) {
-		if (e.tagName.toLowerCase() === 'a') {
-			const href = e.getAttribute('href');
-			if (href && !href.includes('http')) {
-				e.addEventListener('click', (event) => {
-					event.preventDefault();
-					const absHref = relativeToAbs(href, chapterPath);
-					jumpTo(absHref); // Internal links within the book
-				});
-			} else {
-				e.setAttribute('target', '_blank'); // External links open in a new tab
-			}
-			continue;
-		}
-
+	for (const e of newHTML.body.querySelectorAll('[src], svg image')) {
 		const attribute = e.tagName.toLowerCase() === 'img' ? 'src' : 'xlink:href';
 		const url = e.getAttribute(attribute);
 
 		if (url && !url.includes('http')) {
 			const filename = relativeToAbs(url, chapterPath);
+			if (!entries[filename]) {
+				continue;
+			}
 			const blob = await entries[filename].blob();
 			const blobUrl = URL.createObjectURL(blob);
 			registerBlobUrl(blobUrl);
@@ -113,5 +96,18 @@ export const assembleChapter = async (
 		}
 	}
 
-	return newHTML.body;
+	if (customCSS) {
+		const styleE = newHTML.createElement('style');
+		styleE.id = 'essence-reader';
+		styleE.innerHTML = customCSS;
+		newHTML.head.appendChild(styleE);
+	}
+
+	if (rootAttributes && Object.keys(rootAttributes).length > 0) {
+		for (const [key, value] of Object.entries(rootAttributes)) {
+			newHTML.documentElement.setAttribute(key, value);
+		}
+	}
+
+	return newHTML.documentElement.outerHTML;
 };

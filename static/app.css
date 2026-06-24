@@ -13,15 +13,9 @@ body {
 	transition:
 		background-color 0.5s,
 		color 0.5s;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
+	font-family:
+		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
 		'Helvetica Neue', sans-serif;
-}
-
-#container a,
-#container p,
-#container span {
-	color: var(--primary-color) !important;
-	font-family: 'Times New Roman', Times, serif; /* Default if epub doesn't specify */
 }
 
 :root {
@@ -35,7 +29,7 @@ body {
 	--primary-color: 233, 233, 233;
 	--primary-bg: 3, 32, 56;
 	--secondary-bg: 7, 37, 62;
-	--highlight-bg: 255,255,255;
+	--highlight-bg: 255, 255, 255;
 }
 
 [data-theme='warm'] {
@@ -43,13 +37,11 @@ body {
 	--primary-bg: 246, 228, 189;
 	--secondary-bg: 251, 238, 210;
 	--highlight-bg: 0, 0, 0;
-
 }
 
 [data-theme='black'] {
 	--primary-color: 233, 233, 233;
 	--primary-bg: 0, 0, 0;
 	--secondary-bg: 28, 32, 34;
-	--highlight-bg: 255,255,255;
-
+	--highlight-bg: 255, 255, 255;
 }

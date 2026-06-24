@@ -159,11 +159,17 @@
 					font-family: var(--essence-font) !important;
 					line-height: normal !important;
 				}
+
+				html[data-essence-theme]:not([data-essence-theme='light']) * {
+					background-color: transparent !important;
+					color: var(--essence-color) !important;
+				}
 			`;
 
 			const rootAttributes: Record<string, string> = {
 				'data-essence-mode': settings.paginated ? 'paginated' : 'scrolled',
-				'data-essence-font': settings.fontFamily
+				'data-essence-font': settings.fontFamily,
+				'data-essence-theme': $themeStore
 			};
 
 			chapterHTML = await assembleChapter(
@@ -325,6 +331,7 @@
 
 		root.setAttribute('data-essence-mode', isPaginated ? 'paginated' : 'scrolled');
 		root.setAttribute('data-essence-font', font);
+		root.setAttribute('data-essence-theme', $themeStore);
 
 		if (isPaginated) updateAfterResize();
 	});

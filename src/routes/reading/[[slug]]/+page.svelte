@@ -444,7 +444,12 @@
 
 	<div class="iframe-container" class:paginated={settings.paginated}>
 		{#if chapterHTML}
-			<iframe bind:this={iframeElement} srcdoc={chapterHTML} title="Book" use:setupIframe></iframe>
+			<iframe
+				bind:this={iframeElement}
+				srcdoc={chapterHTML}
+				sandbox="allow-same-origin"
+				title="Book"
+				use:setupIframe></iframe>
 		{/if}
 	</div>
 </div>

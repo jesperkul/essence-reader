@@ -74,6 +74,8 @@ export const assembleChapter = async (
 		e.remove();
 	}
 
+	newHTML.head.querySelectorAll('link').forEach((link) => link.remove());
+
 	for (const e of newHTML.body.querySelectorAll('[src], svg image')) {
 		const attribute = e.tagName.toLowerCase() === 'img' ? 'src' : 'xlink:href';
 		const url = e.getAttribute(attribute);
@@ -95,6 +97,15 @@ export const assembleChapter = async (
 			}
 		}
 	}
+
+	const csp = newHTML.createElement('meta');
+	csp.setAttribute('http-equiv', 'Content-Security-Policy');
+	csp.setAttribute(
+		'content',
+		"default-src 'none'; img-src blob: data:; font-src blob: data:; media-src blob: data:; style-src 'unsafe-inline';"
+	);
+
+	newHTML.head.prepend(csp);
 
 	if (customCSS) {
 		const styleE = newHTML.createElement('style');

@@ -1,12 +1,17 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import type { Book, Metadata } from '$lib/types';
+	import type { Book, Metadata, ReaderSettings } from '$lib/types';
 	import Topbar from '$lib/components/Topbar.svelte';
-	import ReaderSettings from './ReaderSettings.svelte';
+	import ReaderSettingsComponent from './ReaderSettings.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import { assembleChapter } from './reader';
 	import { themeStore } from '$lib/stores';
+	import { unzip, type ZipInfo } from 'unzipit';
+	import { openBookDB } from '$lib/db';
+	import TocNode from './TocNode.svelte';
+	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
+	import { relativeToAbs } from '$lib/utils.js';
 
 	// Icons:
 	import CarbonSettings from '~icons/carbon/settings';
@@ -16,27 +21,18 @@
 	import CarbonChevronLeft from '~icons/carbon/chevron-left';
 	import CarbonDirectionLoopLeft from '~icons/carbon/direction-loop-left';
 
-	import { unzip, type ZipInfo } from 'unzipit';
-	import { openBookDB } from '$lib/db';
-	import TocNode from './TocNode.svelte';
-	import { relativeToAbs } from '$lib/utils.js';
-
 	const { data } = $props();
 	let meta: Metadata = $derived(data.meta);
 	let book: Book = $derived(data.book);
 
 	let section: number = $state(0);
 	let scrolled: number = $state(0);
-
-	type settingsType = {
-		scale: number;
-		fontFamily: string;
-		paginated: boolean;
-		animations: boolean;
-	};
+	let previousJumps: number[] = $state([]);
+	let iframeElement: HTMLIFrameElement | undefined = $state();
+	let frame: ReaderFrame | undefined = $state();
 
 	let storedSettingsJson = localStorage.getItem('settings');
-	let settings: settingsType = $state(
+	let settings: ReaderSettings = $state(
 		storedSettingsJson
 			? JSON.parse(storedSettingsJson)
 			: {
@@ -48,15 +44,17 @@
 	);
 
 	let entries: ZipInfo['entries'];
-	let previousJumps: number[] = $state([]);
-
-	let chapterHTML = $state('');
-	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let blobUrls: string[] = [];
 
-	const registerBlobUrl = (url: string) => {
-		blobUrls.push(url);
-	};
+	onMount(() => {
+		if (!iframeElement) return;
+		frame = new ReaderFrame(iframeElement, {
+			onKeydown: handleKeydown,
+			onRequestSectionChange: handleSectionChange,
+			onLinkClick: jumpTo,
+			settings: settings
+		});
+	});
 
 	onMount(async () => {
 		try {
@@ -76,7 +74,17 @@
 		blobUrls.forEach(URL.revokeObjectURL);
 	});
 
-	const updateSection = async (index: number) => {
+	const handleSectionChange = (direction: number) => {
+		if (direction < 0 && section > 0) {
+			updateSection(section - 1, { type: 'end' });
+		} else if (direction > 0 && section + 1 < book.spine.length) {
+			updateSection(section + 1, { type: 'start' });
+		}
+	};
+
+	const registerBlobUrl = (url: string) => blobUrls.push(url);
+
+	const updateSection = async (index: number, target?: ReaderTarget) => {
 		if (0 <= index && index < book.spine.length) {
 			blobUrls.forEach(URL.revokeObjectURL);
 			blobUrls = [];
@@ -172,217 +180,65 @@
 				'data-essence-theme': $themeStore
 			};
 
-			chapterHTML = await assembleChapter(
+			let chapterHTML = await assembleChapter(
 				book.spine[index],
 				entries,
 				registerBlobUrl,
 				readerCSS,
 				rootAttributes
 			);
+
+			await frame?.loadHTML(chapterHTML, target);
 		}
 	};
-
-	const getClientWidth = () => iframeElement?.clientWidth || 0;
-	const getScrollWidth = () =>
-		iframeElement?.contentWindow?.document.documentElement.scrollWidth || 0;
 
 	const jumpTo = async (href: string) => {
 		previousJumps = [...previousJumps, section];
-		const [chapter, elemId] = href.split('#');
+		const [chapterPath, elemId] = href.split('#');
 
-		if (settings.paginated) {
-			pagesScrolled = 0;
-			iframeElement?.contentWindow?.scrollTo({ left: 0 });
-		}
-		if (chapter) {
-			const chapterIndex = book.spine.indexOf(chapter);
-			await updateSection(chapterIndex);
-		}
-		if (elemId) {
-			// if there is an element that is to be focused
-			await tick(); // Wait until chapter has been loaded
-			const iframeDocument = iframeElement?.contentWindow?.document;
-			if (!iframeDocument) return;
-			const element = iframeDocument.getElementById(elemId);
-			if (!element) return;
-			if (settings.paginated) {
-				const left = element.getBoundingClientRect().left;
-				pagesScrolled = Math.floor(left / getClientWidth());
-				iframeElement?.contentWindow?.scrollTo({
-					left: pagesScrolled * getClientWidth(),
-					behavior: settings.animations ? 'smooth' : 'instant'
-				});
-			} else {
-				element.scrollIntoView({
-					behavior: 'auto',
-					block: 'center',
-					inline: 'center'
-				});
-			}
-		}
-	};
+		let targetIndex = section;
+		if (chapterPath) {
+			targetIndex = book.spine.indexOf(chapterPath);
 
-	let pagesScrolled = $state(0);
-
-	const nextPage = () => {
-		const clientWidth = getClientWidth();
-		const scrollWidth = getScrollWidth();
-
-		if ((pagesScrolled + 1) * clientWidth < scrollWidth) {
-			pagesScrolled++;
-		} else if (section + 1 < book.spine.length) {
-			updateSection(section + 1);
-			pagesScrolled = 0;
-		}
-		iframeElement?.contentWindow?.scrollTo({
-			left: pagesScrolled * clientWidth,
-			behavior: settings.animations ? 'smooth' : 'instant'
-		});
-	};
-
-	const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
-	const prevPage = async () => {
-		const clientWidth = getClientWidth();
-
-		if (pagesScrolled > 0) {
-			pagesScrolled--;
-		} else {
-			await updateSection(section - 1);
-			await delay(50); // Wait so that CSS styles can be applied on previous chapter
-			// Necessary since the width changes when styles are applied
-
-			const scrollWidth = getScrollWidth();
-			if (scrollWidth > clientWidth) {
-				pagesScrolled = Math.floor(scrollWidth / clientWidth);
-			} else {
-				pagesScrolled = 0;
+			if (targetIndex === -1) {
+				const absPath = relativeToAbs(chapterPath, book.spine[section]);
+				targetIndex = book.spine.indexOf(absPath);
 			}
 		}
 
-		iframeElement?.contentWindow?.scrollTo({
-			left: pagesScrolled * clientWidth,
-			behavior: settings.animations ? 'smooth' : 'instant'
-		});
-	};
+		const target: ReaderTarget = elemId ? { type: 'element', id: elemId } : { type: 'start' };
 
-	const incrementSection = (inc: number) => {
-		if (!settings.paginated) {
-			updateSection(section + inc);
-		} else {
-			if (inc > 0) {
-				nextPage();
-			} else {
-				prevPage();
-			}
+		if (targetIndex === section) {
+			frame?.goToTarget(target);
+			return;
 		}
-		if (previousJumps.length !== 0) {
-			previousJumps = [];
+
+		if (targetIndex !== -1) {
+			await updateSection(targetIndex, target);
 		}
 	};
 
 	const handleKeydown = ({ key }: { key: string }) => {
 		switch (key) {
 			case 'ArrowLeft':
-				incrementSection(-1);
+				previousJumps = [];
+				frame?.prev();
 				break;
 			case 'ArrowRight':
-				incrementSection(1);
+				previousJumps = [];
+				frame?.next();
 				break;
 			default:
 				break;
 		}
 	};
 
-	let timeout: number;
-
-	const handleResize = () => {
-		if (settings.paginated) {
-			clearTimeout(timeout);
-			timeout = window.setTimeout(updateAfterResize, 100);
-		}
-	};
-
-	const updateAfterResize = () => {
-		if (settings.paginated) {
-			iframeElement?.contentWindow?.scrollTo({
-				left: pagesScrolled * getClientWidth(),
-				behavior: settings.animations ? 'smooth' : 'instant'
-			});
-		}
-	};
-
 	$effect(() => {
-		const currentScale = settings.scale / 10;
-		const font = settings.fontFamily;
-		const isPaginated = settings.paginated;
-		$themeStore;
-
-		const iframeDocument = iframeElement?.contentWindow?.document;
-		if (!iframeDocument) return;
-
-		const root = iframeDocument.documentElement;
 		const computedStyles = getComputedStyle(document.documentElement);
 		const primaryColor = computedStyles.getPropertyValue('--primary-color') || '0, 0, 0';
 
-		root.style.setProperty('--essence-scale', currentScale.toString());
-		root.style.setProperty('--essence-font', font);
-		root.style.setProperty('--essence-color', `rgb(${primaryColor})`);
-
-		root.setAttribute('data-essence-mode', isPaginated ? 'paginated' : 'scrolled');
-		root.setAttribute('data-essence-font', font);
-		root.setAttribute('data-essence-theme', $themeStore);
-
-		if (isPaginated) updateAfterResize();
+		frame?.setSettings(settings, $themeStore, primaryColor);
 	});
-
-	const setupIframe = (node: HTMLIFrameElement) => {
-		const addListeners = () => {
-			const iframeDocument = node.contentWindow?.document;
-			if (!iframeDocument) return;
-
-			iframeDocument.addEventListener('keydown', (e) => {
-				handleKeydown({ key: e.key });
-			});
-
-			iframeDocument.addEventListener('click', (e) => {
-				const target = (e.target as HTMLElement).closest('a');
-				if (target) {
-					const href = target.getAttribute('href');
-					if (!href) return;
-
-					if (href.startsWith('http://') || href.startsWith('https://')) {
-						e.preventDefault();
-						window.open(href, '_blank', 'noopener,noreferrer');
-					} else if (href.startsWith('mailto:')) {
-						return;
-					} else if (href.startsWith('#')) {
-						e.preventDefault();
-						jumpTo(href);
-					} else {
-						e.preventDefault();
-						const absHref = relativeToAbs(href, book.spine[section]);
-						jumpTo(absHref);
-					}
-				} else {
-					node.dispatchEvent(
-						new MouseEvent('click', {
-							bubbles: true,
-							cancelable: true
-						})
-					);
-				}
-			});
-		};
-
-		node.addEventListener('load', addListeners);
-
-		return {
-			destroy() {
-				node.removeEventListener('load', addListeners);
-			}
-		};
-	};
 </script>
 
 <svelte:head>
@@ -435,26 +291,19 @@
 				{#snippet icon()}
 					<CarbonSettings />
 				{/snippet}
-				<ReaderSettings bind:settings onScaleChange={updateAfterResize} />
+				<ReaderSettingsComponent bind:settings onScaleChange={() => frame?.onResize()} />
 			</Drawer>
-			<button onclick={() => incrementSection(-1)}><CarbonArrowLeft /></button>
-			<button onclick={() => incrementSection(1)}><CarbonArrowRight /></button>
+			<button onclick={() => frame?.prev()}><CarbonArrowLeft /></button>
+			<button onclick={() => frame?.next()}><CarbonArrowRight /></button>
 		{/snippet}
 	</Topbar>
 
 	<div class="iframe-container" class:paginated={settings.paginated}>
-		{#if chapterHTML}
-			<iframe
-				bind:this={iframeElement}
-				srcdoc={chapterHTML}
-				sandbox="allow-same-origin"
-				title="Book"
-				use:setupIframe></iframe>
-		{/if}
+		<iframe bind:this={iframeElement} sandbox="allow-same-origin" title="Book"></iframe>
 	</div>
 </div>
 
-<svelte:window bind:scrollY={scrolled} onresize={handleResize} onkeydown={handleKeydown} />
+<svelte:window onresize={() => frame?.onResize()} onkeydown={handleKeydown} />
 
 <style>
 	.iframe-container {

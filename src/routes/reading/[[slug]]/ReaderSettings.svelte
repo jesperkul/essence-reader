@@ -5,17 +5,12 @@
 	import CarbonTextFont from '~icons/carbon/text-font';
 	import CarbonTextScale from '~icons/carbon/text-scale';
 	import CarbonSidePanelOpenFilled from '~icons/carbon/side-panel-open-filled';
-	interface settingsInterface {
-		scale: number;
-		fontFamily: string;
-		paginated: boolean;
-		animations: boolean;
-	}
+	import type { ReaderSettings } from '$lib/types';
 
 	let {
 		settings = $bindable(),
 		onScaleChange
-	}: { settings: settingsInterface; onScaleChange: () => void } = $props();
+	}: { settings: ReaderSettings; onScaleChange: () => void } = $props();
 
 	$effect(() => localStorage.setItem('settings', JSON.stringify(settings)));
 </script>

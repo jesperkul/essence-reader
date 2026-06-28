@@ -20,3 +20,10 @@ export type TableOfContentsItem = {
 	index: number;
 	children?: TableOfContentsItem[];
 };
+
+export interface ReaderSettings {
+	scale: number;
+	fontFamily: string;
+	paginated: boolean;
+	animations: boolean;
+}

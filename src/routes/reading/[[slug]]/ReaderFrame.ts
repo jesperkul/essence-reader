@@ -161,6 +161,23 @@ export class ReaderFrame {
 				})
 			);
 		});
+
+		iframeDocument.addEventListener('dragenter', (e: DragEvent) => e.preventDefault());
+		iframeDocument.addEventListener('dragover', (e: DragEvent) => e.preventDefault());
+
+		iframeDocument.addEventListener('drop', (e: DragEvent) => {
+			e.preventDefault();
+
+			const files = e.dataTransfer?.files;
+			if (files && files.length > 0) {
+				this.iframe.dispatchEvent(
+					new CustomEvent('reader-drop', {
+						bubbles: true,
+						detail: { files: Array.from(files) }
+					})
+				);
+			}
+		});
 	};
 
 	private getClientWidth = () => this.iframe.clientWidth || 0;

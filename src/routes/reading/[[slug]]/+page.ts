@@ -2,6 +2,7 @@ export const prerender = false;
 import type { PageLoad } from './$types';
 import { getLoaded, setLoaded } from '$lib/stores';
 import { error } from '@sveltejs/kit';
+import { unzip } from 'unzipit';
 
 export const load = (async ({ params }) => {
 	const loaded = getLoaded();
@@ -27,7 +28,8 @@ export const load = (async ({ params }) => {
 
 	if (!book) error(404, `Book with ID ${slugID} not found in your library`);
 
-	const stored = { meta, book };
+	const { entries } = await unzip(book.file);
+	const stored = { meta, book, entries };
 	setLoaded(stored);
 
 	return stored;

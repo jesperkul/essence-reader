@@ -1,30 +1,34 @@
 import { addBook } from '$lib/db';
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { setLoaded, shouldSaveStore } from '$lib/stores';
 import { parseEpub } from './services/parse';
-import { page } from '$app/stores';
+import { page } from '$app/state';
 import { get } from 'svelte/store';
+import { unzip } from 'unzipit';
 
 export const readFile = async (file: File) => {
 	try {
-		if (!file.type.includes('epub') || !file.type.includes('zip')) {
+		if (!file.type.includes('epub') && !file.type.includes('zip')) {
 			throw new Error('File is not of type .epub or .zip');
 		}
+
 		const { meta, book } = await parseEpub(file);
-		let id = '';
+		const id = get(shouldSaveStore) ? await addBook(meta, book) : undefined;
 
-		if (get(shouldSaveStore)) {
-			id = await addBook(meta, book);
+		if (id && page.params.slug === String(id)) return;
+
+		const { entries } = await unzip(file);
+		setLoaded({ meta, book, entries });
+
+		if (!id && page.url.pathname === '/reading') {
+			// When reading without saving, we need to manually re-run
+			// load function since the books share the same route.
+			await invalidateAll();
+		} else {
+			const isAlreadyReading = page.route.id?.includes('reading') ?? false;
+			const url = id ? `/reading/${id}` : '/reading';
+			await goto(url, { replaceState: isAlreadyReading });
 		}
-
-		setLoaded({ meta, book });
-
-		if (get(page).route.id?.includes('reading')) {
-			// Not an ideal solution, but makes sure that reading page is
-			// reloaded with new book when already on reading page.
-			await goto(`/`);
-		}
-		goto(`/reading/${id}`);
 	} catch (e) {
 		alert(e);
 	}

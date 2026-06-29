@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import type { Book, Metadata, ReaderSettings } from '$lib/types';
 	import Topbar from '$lib/components/Topbar.svelte';
@@ -7,7 +7,7 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import { assembleChapter } from './reader';
 	import { themeStore } from '$lib/stores';
-	import { unzip, type ZipInfo } from 'unzipit';
+	import type { ZipInfo } from 'unzipit';
 	import { openBookDB } from '$lib/db';
 	import TocNode from './TocNode.svelte';
 	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
@@ -24,6 +24,7 @@
 	const { data } = $props();
 	let meta: Metadata = $derived(data.meta);
 	let book: Book = $derived(data.book);
+	let entries: ZipInfo['entries'] = $derived(data.entries);
 
 	let section: number = $state(0);
 	let scrolled: number = $state(0);
@@ -43,7 +44,6 @@
 				}
 	);
 
-	let entries: ZipInfo['entries'];
 	let blobUrls: string[] = [];
 
 	onMount(() => {
@@ -56,18 +56,15 @@
 		});
 	});
 
-	onMount(async () => {
-		try {
-			entries = (await unzip(book.file)).entries;
-		} catch (e) {
-			if ((e as Error).message.includes('permission')) {
-				// Workaround to fix error in Chromium incognito mode.
-				// See: https://github.com/GoogleChrome/developer.chrome.com/issues/2563
-				const buffer = await book.file.arrayBuffer();
-				entries = (await unzip(buffer)).entries;
+	$effect(() => {
+		void book; // Run effect when book changes.
+
+		untrack(() => {
+			if (frame) {
+				previousJumps = [];
+				updateSection(meta.progress);
 			}
-		}
-		updateSection(meta.progress);
+		});
 	});
 
 	onDestroy(() => {

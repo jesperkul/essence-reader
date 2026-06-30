@@ -6,6 +6,7 @@ export interface ReaderFrameOptions {
 	onKeydown: (data: { key: string }) => void;
 	onRequestSectionChange: (direction: number) => void;
 	onLinkClick: (href: string) => void;
+	onProgressChange: (progress: number) => void;
 	settings: ReaderSettings;
 }
 
@@ -17,7 +18,10 @@ export class ReaderFrame {
 	private onKeydown: (data: { key: string }) => void;
 	private onLinkClick: (href: string) => void;
 	private onRequestSectionChange: (direction: number) => void;
+	private onProgressChange: (progress: number) => void;
+
 	private resizeTimeout: number | null = null;
+	private progressRaf: number | null = null;
 
 	constructor(iframe: HTMLIFrameElement, options: ReaderFrameOptions) {
 		this.iframe = iframe;
@@ -25,16 +29,26 @@ export class ReaderFrame {
 		this.onKeydown = options.onKeydown;
 		this.onRequestSectionChange = options.onRequestSectionChange;
 		this.onLinkClick = options.onLinkClick;
+		this.onProgressChange = options.onProgressChange;
 	}
 
 	public loadHTML(html: string, target?: ReaderTarget): Promise<void> {
 		return new Promise((resolve) => {
+			if (this.progressRaf !== null) {
+				cancelAnimationFrame(this.progressRaf);
+				this.progressRaf = null;
+			}
+
 			const handleLoad = () => {
 				this.addListeners();
 
 				if (target) {
 					this.goToTarget(target);
+				} else {
+					this.goToPage(0);
 				}
+
+				this.updateProgress();
 				resolve();
 			};
 
@@ -75,13 +89,15 @@ export class ReaderFrame {
 		if (!iframeDocument) return;
 
 		switch (target.type) {
-			case 'start':
+			case 'start': {
 				this.goToPage(0);
 				break;
-			case 'end':
+			}
+			case 'end': {
 				const lastPage = Math.max(0, this.getPageCount() - 1);
 				this.goToPage(lastPage);
 				break;
+			}
 			case 'element': {
 				const el = iframeDocument.getElementById(target.id);
 				if (!el) return;
@@ -103,6 +119,8 @@ export class ReaderFrame {
 				left: this.currentPage * this.getClientWidth(),
 				behavior: this.settings?.animations ? 'smooth' : 'instant'
 			});
+
+			this.updateProgress();
 		}, 100);
 	}
 
@@ -124,11 +142,44 @@ export class ReaderFrame {
 		root.setAttribute('data-essence-mode', this.settings?.paginated ? 'paginated' : 'scrolled');
 		root.setAttribute('data-essence-font', this.settings?.fontFamily || 'sans-serif');
 		root.setAttribute('data-essence-theme', theme);
+
+		requestAnimationFrame(() => {
+			this.updateProgress();
+		});
+	}
+
+	private updateProgress() {
+		if (this.settings?.paginated) {
+			const pageCount = this.getPageCount();
+			const progress = pageCount > 1 ? this.currentPage / (pageCount - 1) : 0;
+			this.onProgressChange(Math.max(0, Math.min(1, progress)));
+		} else {
+			const iframeDocument = this.iframe.contentWindow?.document.documentElement;
+			if (!iframeDocument) return;
+
+			const maxScroll = iframeDocument.scrollHeight - iframeDocument.clientHeight;
+			const progress = maxScroll > 0 ? iframeDocument.scrollTop / maxScroll : 0;
+			this.onProgressChange(Math.max(0, Math.min(1, progress)));
+		}
 	}
 
 	private addListeners = () => {
 		const iframeDocument = this.iframe.contentWindow?.document;
 		if (!iframeDocument) return;
+
+		iframeDocument.addEventListener(
+			'scroll',
+			() => {
+				if (this.settings?.paginated) return;
+				if (this.progressRaf !== null) return;
+
+				this.progressRaf = requestAnimationFrame(() => {
+					this.progressRaf = null;
+					this.updateProgress();
+				});
+			},
+			{ passive: true }
+		);
 
 		iframeDocument.addEventListener('keydown', (e) => {
 			this.onKeydown({ key: e.key });
@@ -186,6 +237,7 @@ export class ReaderFrame {
 
 	private getPageCount(): number {
 		const width = this.getClientWidth();
+		if (width <= 0) return 1;
 		const total = this.getScrollWidth();
 		return Math.max(1, Math.ceil(total / width));
 	}
@@ -200,6 +252,8 @@ export class ReaderFrame {
 			left: this.currentPage * width,
 			behavior: this.settings?.animations ? 'smooth' : 'instant'
 		});
+
+		this.updateProgress();
 	}
 
 	private goToElement(el: Element) {

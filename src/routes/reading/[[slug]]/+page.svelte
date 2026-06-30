@@ -27,7 +27,8 @@
 	let entries: ZipInfo['entries'] = $derived(data.entries);
 
 	let section: number = $state(0);
-	let scrolled: number = $state(0);
+	let progressPercent = $state(0);
+	let toneTopbar = $state(false);
 	let previousJumps: number[] = $state([]);
 	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let frame: ReaderFrame | undefined = $state();
@@ -46,13 +47,42 @@
 
 	let blobUrls: string[] = [];
 
+	const sectionWeights = $derived(book.spine.map((path) => entries[path]?.size || 0));
+
+	const weightBeforeSection = $derived.by(() => {
+		let total = 0;
+		return sectionWeights.map((weight) => {
+			const start = total;
+			total += weight;
+			return start;
+		});
+	});
+
+	const totalBookWeight = $derived(sectionWeights.reduce((a, b) => a + b, 0));
+
+	let updateProgress = (sectionProgress: number) => {
+		const shouldToneTopbar = !settings.paginated && sectionProgress > 0;
+		if (shouldToneTopbar !== toneTopbar) {
+			toneTopbar = shouldToneTopbar;
+		}
+
+		const currentWeight = weightBeforeSection[section] + sectionProgress * sectionWeights[section];
+		const progress = totalBookWeight > 0 ? currentWeight / totalBookWeight : 0;
+		const newPercent = Math.round(progress * 100);
+
+		if (newPercent !== progressPercent) {
+			progressPercent = newPercent;
+		}
+	};
+
 	onMount(() => {
 		if (!iframeElement) return;
 		frame = new ReaderFrame(iframeElement, {
 			onKeydown: handleKeydown,
 			onRequestSectionChange: handleSectionChange,
 			onLinkClick: jumpTo,
-			settings: settings
+			settings: settings,
+			onProgressChange: updateProgress
 		});
 	});
 
@@ -87,7 +117,6 @@
 			blobUrls = [];
 
 			section = index;
-			scrolled = 0;
 			meta.progress = section;
 			if (meta.id) {
 				(await openBookDB).put('metas', $state.snapshot(meta));
@@ -245,7 +274,7 @@
 </svelte:head>
 
 <div in:fade={{ duration: 200 }}>
-	<Topbar toned={scrolled > 100}>
+	<Topbar toned={toneTopbar}>
 		{#snippet leftbar()}
 			<a href="/">
 				<CarbonChevronLeft />
@@ -257,7 +286,7 @@
 				<b>{meta.title} - </b>
 				{meta.author}
 			</h4>
-			<p>{section}/{meta.length}</p>
+			<p>{progressPercent}%</p>
 		{/snippet}
 
 		{#snippet rightbar()}
@@ -296,7 +325,7 @@
 	</Topbar>
 
 	<div class="iframe-container" class:paginated={settings.paginated}>
-		<iframe bind:this={iframeElement} sandbox="allow-same-origin" title="Book"></iframe>
+		<iframe bind:this={iframeElement} title="Book"></iframe>
 	</div>
 </div>
 

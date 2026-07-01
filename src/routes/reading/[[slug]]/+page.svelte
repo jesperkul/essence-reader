@@ -7,6 +7,7 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import { assembleChapter } from './reader';
 	import { themeStore } from '$lib/stores';
+	import { readingState } from '$lib/state/readingState.svelte.js';
 	import type { ZipInfo } from 'unzipit';
 	import { openBookDB } from '$lib/db';
 	import TocNode from './TocNode.svelte';
@@ -26,8 +27,7 @@
 	let book: Book = $derived(data.book);
 	let entries: ZipInfo['entries'] = $derived(data.entries);
 
-	let section: number = $state(0);
-	let progressPercent = $state(0);
+	let progressPercent = $derived(Math.round(readingState.totalProgress * 100));
 	let toneTopbar = $state(false);
 	let previousJumps: number[] = $state([]);
 	let iframeElement: HTMLIFrameElement | undefined = $state();
@@ -66,13 +66,13 @@
 			toneTopbar = shouldToneTopbar;
 		}
 
-		const currentWeight = weightBeforeSection[section] + sectionProgress * sectionWeights[section];
-		const progress = totalBookWeight > 0 ? currentWeight / totalBookWeight : 0;
-		const newPercent = Math.round(progress * 100);
+		const currentWeight =
+			weightBeforeSection[readingState.sectionIndex] +
+			sectionProgress * sectionWeights[readingState.sectionIndex];
+		const newTotalProgress = totalBookWeight > 0 ? currentWeight / totalBookWeight : 0;
 
-		if (newPercent !== progressPercent) {
-			progressPercent = newPercent;
-		}
+		readingState.sectionProgress = sectionProgress;
+		readingState.totalProgress = newTotalProgress;
 	};
 
 	onMount(() => {
@@ -102,10 +102,10 @@
 	});
 
 	const handleSectionChange = (direction: number) => {
-		if (direction < 0 && section > 0) {
-			updateSection(section - 1, { type: 'end' });
-		} else if (direction > 0 && section + 1 < book.spine.length) {
-			updateSection(section + 1, { type: 'start' });
+		if (direction < 0 && readingState.sectionIndex > 0) {
+			updateSection(readingState.sectionIndex - 1, { type: 'end' });
+		} else if (direction > 0 && readingState.sectionIndex + 1 < book.spine.length) {
+			updateSection(readingState.sectionIndex + 1, { type: 'start' });
 		}
 	};
 
@@ -116,8 +116,8 @@
 			blobUrls.forEach(URL.revokeObjectURL);
 			blobUrls = [];
 
-			section = index;
-			meta.progress = section;
+			readingState.sectionIndex = index;
+			meta.progress = index;
 			if (meta.id) {
 				(await openBookDB).put('metas', $state.snapshot(meta));
 			}
@@ -219,22 +219,22 @@
 	};
 
 	const jumpTo = async (href: string) => {
-		previousJumps = [...previousJumps, section];
+		previousJumps = [...previousJumps, readingState.sectionIndex];
 		const [chapterPath, elemId] = href.split('#');
 
-		let targetIndex = section;
+		let targetIndex = readingState.sectionIndex;
 		if (chapterPath) {
 			targetIndex = book.spine.indexOf(chapterPath);
 
 			if (targetIndex === -1) {
-				const absPath = relativeToAbs(chapterPath, book.spine[section]);
+				const absPath = relativeToAbs(chapterPath, book.spine[readingState.sectionIndex]);
 				targetIndex = book.spine.indexOf(absPath);
 			}
 		}
 
 		const target: ReaderTarget = elemId ? { type: 'element', id: elemId } : { type: 'start' };
 
-		if (targetIndex === section) {
+		if (targetIndex === readingState.sectionIndex) {
 			frame?.goToTarget(target);
 			return;
 		}
@@ -310,7 +310,7 @@
 					<CarbonTableOfContents />
 				{/snippet}
 				{#each book.toc as tocitem}
-					<TocNode {tocitem} onClick={jumpTo} currentSection={section} />
+					<TocNode {tocitem} onClick={jumpTo} currentSection={readingState.sectionIndex} />
 				{/each}
 			</Drawer>
 			<Drawer>

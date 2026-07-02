@@ -1,10 +1,11 @@
 import { addBook } from '$lib/db';
 import { goto, invalidateAll } from '$app/navigation';
-import { setLoaded, shouldSaveStore } from '$lib/stores';
+import { shouldSaveStore } from '$lib/stores';
 import { parseEpub } from './services/parse';
 import { page } from '$app/state';
 import { get } from 'svelte/store';
 import { unzip } from 'unzipit';
+import { readingState } from './state/readingState.svelte';
 
 export const readFile = async (file: File) => {
 	try {
@@ -18,7 +19,7 @@ export const readFile = async (file: File) => {
 		if (id && page.params.slug === String(id)) return;
 
 		const { entries } = await unzip(file);
-		setLoaded({ meta, book, entries });
+		readingState.setLoaded({ meta, book, entries });
 
 		if (!id && page.url.pathname === '/reading') {
 			// When reading without saving, we need to manually re-run

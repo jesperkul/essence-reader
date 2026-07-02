@@ -1,23 +1,5 @@
-import { get, writable } from 'svelte/store';
-import type { Book, Metadata } from '$lib/types';
+import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import type { ZipInfo } from 'unzipit';
-
-interface LoadedStore {
-	meta: Metadata;
-	book: Book;
-	entries: ZipInfo['entries'];
-}
-
-const loadedStore = writable<LoadedStore | undefined>(undefined);
-
-export const getLoaded = () => {
-	return get(loadedStore);
-};
-
-export const setLoaded = (object: LoadedStore) => {
-	loadedStore.set(object);
-};
 
 const theme = browser ? document.documentElement.getAttribute('data-theme') || 'light' : 'light';
 

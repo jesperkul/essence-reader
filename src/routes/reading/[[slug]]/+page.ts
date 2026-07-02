@@ -1,11 +1,11 @@
 export const prerender = false;
+import { readingState } from '$lib/state/readingState.svelte';
 import type { PageLoad } from './$types';
-import { getLoaded, setLoaded } from '$lib/stores';
 import { error } from '@sveltejs/kit';
 import { unzip } from 'unzipit';
 
 export const load = (async ({ params }) => {
-	const loaded = getLoaded();
+	const loaded = readingState.getLoaded();
 
 	if (loaded && (!params.slug || loaded.meta.id === Number(params.slug))) {
 		return loaded;
@@ -30,7 +30,7 @@ export const load = (async ({ params }) => {
 
 	const { entries } = await unzip(book.file);
 	const stored = { meta, book, entries };
-	setLoaded(stored);
+	readingState.setLoaded(stored);
 
 	return stored;
 }) satisfies PageLoad;

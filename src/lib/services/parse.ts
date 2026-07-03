@@ -6,20 +6,31 @@ const domParser = new DOMParser();
 const parseOpf = (opfContent: string, opfPath: string) => {
 	const opfDocument = domParser.parseFromString(opfContent, 'application/xml');
 
+	const packageElement = opfDocument.querySelector('package');
 	const metadataElement = opfDocument.querySelector('metadata');
 	const manifestElement = opfDocument.querySelector('manifest');
 	const spineElement = opfDocument.querySelector('spine');
+	if (!packageElement) throw new Error('Package element not found in OPF');
 	if (!metadataElement) throw new Error('Metadata element not found in OPF');
 	if (!manifestElement) throw new Error('Manifest element not found in OPF');
 	if (!spineElement) throw new Error('Spine element not found in OPF');
 
 	const { title, authors } = parseMeta(metadataElement);
+	const identifier = getIdentifier(packageElement);
 	const coverPath = getCoverPath(manifestElement, metadataElement, opfPath);
 	const manifestItems = parseManifest(manifestElement, opfPath);
 	const spine = parseSpine(spineElement, manifestItems);
 	const ncxPath = getNcxPath(manifestElement, opfPath);
 
-	return { title, authors, coverPath, spine, ncxPath };
+	return { title, authors, identifier, coverPath, spine, ncxPath };
+};
+
+const getIdentifier = (packageElement: Element): string => {
+	const identifierId = packageElement.getAttribute('unique-identifier');
+	if (!identifierId) return '';
+
+	const identifierElement = packageElement.querySelector(`metadata > [id='${identifierId}']`);
+	return identifierElement?.textContent || '';
 };
 
 const getNcxPath = (manifest: Element, opfPath: string): string | undefined => {
@@ -115,7 +126,7 @@ export const parseEpub = async (epub: File): Promise<{ meta: Metadata; book: Boo
 		const opfPath = parseContainer(container);
 		const opf = await entries[opfPath].text();
 
-		const { title, authors, coverPath, spine, ncxPath } = parseOpf(opf, opfPath);
+		const { title, authors, identifier, coverPath, spine, ncxPath } = parseOpf(opf, opfPath);
 
 		let cover: Blob | undefined;
 		if (coverPath) {
@@ -129,7 +140,7 @@ export const parseEpub = async (epub: File): Promise<{ meta: Metadata; book: Boo
 			toc = parseToc(ncx, ncxPath, spine);
 		}
 
-		const meta: Metadata = { title, authors, cover, progress: 0, length: spine.length - 1 };
+		const meta: Metadata = { title, authors, identifier, cover, progress: 0, length: spine.length - 1 };
 		const book: Book = { spine, toc, file: epub };
 
 		return { meta, book };

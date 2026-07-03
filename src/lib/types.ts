@@ -12,7 +12,7 @@ export type Metadata = {
 	cover: Blob | undefined;
 	progress: number;
 	length: number;
-	identifier?: string;
+	identifier: string;
 	fileSize?: number;
 	addedAt?: number;
 };

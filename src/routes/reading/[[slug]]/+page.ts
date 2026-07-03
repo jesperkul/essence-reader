@@ -1,28 +1,28 @@
 export const prerender = false;
+import { openLibraryDB } from '$lib/db.js';
 import { readingState } from '$lib/state/readingState.svelte';
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { unzip } from 'unzipit';
 
 export const load = (async ({ params }) => {
+	const slugID = Number(params.slug);
 	const loaded = readingState.getLoaded();
 
-	if (loaded && (!params.slug || loaded.meta.id === Number(params.slug))) {
+	if (loaded && (!params.slug || loaded.meta.id === slugID)) {
 		return loaded;
 	}
 
 	if (!params.slug) error(400, 'No book loaded and no book ID provided');
 
-	const slugID = Number(params.slug);
-
 	if (isNaN(slugID) || !Number.isInteger(slugID) || slugID <= 0) {
 		error(400, 'Invalid or non-numeric book ID provided');
 	}
 
-	const db = await (await import('$lib/db')).openBookDB;
+	const db = await openLibraryDB;
 
-	const tx = db.transaction(['metas', 'books'], 'readonly');
-	const meta = await tx.objectStore('metas').get(slugID);
+	const tx = db.transaction(['metadata', 'books'], 'readonly');
+	const meta = await tx.objectStore('metadata').get(slugID);
 	const book = await tx.objectStore('books').get(slugID);
 	await tx.done;
 

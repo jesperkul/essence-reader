@@ -2,7 +2,7 @@ export type Book = {
 	id?: number;
 	spine: string[];
 	toc: TableOfContentsItem[];
-	file: File;
+	file: Blob;
 };
 
 export type Metadata = {
@@ -12,6 +12,9 @@ export type Metadata = {
 	cover: Blob | undefined;
 	progress: number;
 	length: number;
+	identifier?: string;
+	fileSize?: number;
+	addedAt?: number;
 };
 
 export type TableOfContentsItem = {

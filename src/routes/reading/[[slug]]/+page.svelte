@@ -9,7 +9,7 @@
 	import { themeStore } from '$lib/stores';
 	import { readingState } from '$lib/state/readingState.svelte.js';
 	import type { ZipInfo } from 'unzipit';
-	import { openBookDB } from '$lib/db';
+	import { openLibraryDB } from '$lib/db.js';
 	import TocNode from './TocNode.svelte';
 	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
 	import { relativeToAbs } from '$lib/utils.js';
@@ -119,7 +119,7 @@
 			readingState.sectionIndex = index;
 			meta.progress = index;
 			if (meta.id) {
-				(await openBookDB).put('metas', $state.snapshot(meta));
+				(await openLibraryDB).put('metadata', $state.snapshot(meta));
 			}
 
 			const computedStyles = getComputedStyle(document.documentElement);

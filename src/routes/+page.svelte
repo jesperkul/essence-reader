@@ -11,7 +11,7 @@
 	import BookPreview from './BookPreview.svelte';
 	import CarbonTrashCan from '~icons/carbon/trash-can';
 	import CarbonSave from '~icons/carbon/save';
-	let openBookDB: typeof import('$lib/db').openBookDB;
+	import { getAllMetas, openLibraryDB } from '$lib/db.js';
 
 	const clickFile = async () => {
 		let input = document.createElement('input');
@@ -35,9 +35,9 @@
 	const deleteBook = async (id: number) => {
 		bookList = bookList.filter((book) => book.id !== id);
 		try {
-			const db = await openBookDB;
-			const tx = db.transaction(['metas', 'books'], 'readwrite');
-			tx.objectStore('metas').delete(id);
+			const db = await openLibraryDB;
+			const tx = db.transaction(['metadata', 'books'], 'readwrite');
+			tx.objectStore('metadata').delete(id);
 			tx.objectStore('books').delete(id);
 			await tx.done;
 		} catch (error) {
@@ -48,9 +48,9 @@
 	const deleteAllBooks = async () => {
 		bookList = [];
 		try {
-			const db = await openBookDB;
-			const tx = db.transaction(['metas', 'books'], 'readwrite');
-			tx.objectStore('metas').clear();
+			const db = await openLibraryDB;
+			const tx = db.transaction(['metadata', 'books'], 'readwrite');
+			tx.objectStore('metadata').clear();
 			tx.objectStore('books').clear();
 			await tx.done;
 		} catch (error) {
@@ -59,9 +59,7 @@
 	};
 
 	onMount(async () => {
-		const libdb = await import('$lib/db');
-		openBookDB = libdb.openBookDB;
-		libdb.getAllMetas().then((books) => {
+		getAllMetas().then((books) => {
 			bookList = books;
 		});
 	});

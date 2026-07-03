@@ -30,6 +30,17 @@ export const addBook = async (metadata: Metadata, book: Book) => {
 	const db = await openLibraryDB;
 	const tx = db.transaction([METADATA_STORE, BOOKS_STORE], 'readwrite');
 
+	const sameIdentifier = await tx
+		.objectStore(METADATA_STORE)
+		.index('identifier')
+		.getAll(metadata.identifier);
+
+	const alreadySaved = sameIdentifier.find(
+		(item) => item.fileSize === metadata.fileSize && item.title === metadata.title
+	);
+
+	if (alreadySaved) return alreadySaved.id;
+
 	const bookId = (await tx.objectStore(METADATA_STORE).add({
 		...metadata,
 		addedAt: Date.now()

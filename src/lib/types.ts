@@ -8,7 +8,7 @@ export type Book = {
 export type Metadata = {
 	id?: number;
 	title: string;
-	author: string[];
+	authors: string[];
 	cover: Blob | undefined;
 	progress: number;
 	length: number;

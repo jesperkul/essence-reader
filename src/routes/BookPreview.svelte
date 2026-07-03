@@ -19,7 +19,7 @@
 	<img src={meta.cover !== undefined ? URL.createObjectURL(meta.cover) : ''} alt="cover" />
 
 	<div class="bookInfo">
-		<h4>{meta.author}</h4>
+		<h4>{meta.authors.join(', ')}</h4>
 		<h3>{meta.title}</h3>
 		<p>{meta.progress} / {meta.length}</p>
 	</div>

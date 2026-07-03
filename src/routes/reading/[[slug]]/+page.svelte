@@ -269,7 +269,7 @@
 
 <svelte:head>
 	<title>
-		{meta.title + ' - ' + meta.author}
+		{meta.title + ' - ' + meta.authors.join(', ')}
 	</title>
 </svelte:head>
 
@@ -284,7 +284,7 @@
 		{#snippet toptext()}
 			<h4>
 				<b>{meta.title} - </b>
-				{meta.author}
+				{meta.authors.join(', ')}
 			</h4>
 			<p>{progressPercent}%</p>
 		{/snippet}

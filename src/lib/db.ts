@@ -39,7 +39,7 @@ export interface NewBook {
 
 export const addBook = async (newBook: NewBook) => {
 	const db = await openLibraryDB;
-	const tx = db.transaction([METADATA_STORE, BOOKS_STORE], 'readwrite');
+	const tx = db.transaction([METADATA_STORE, BOOKS_STORE, COVERS_STORE], 'readwrite');
 
 	const sameIdentifier = await tx
 		.objectStore(METADATA_STORE)
@@ -57,7 +57,6 @@ export const addBook = async (newBook: NewBook) => {
 		authors: newBook.authors,
 		identifier: newBook.identifier,
 		fileSize: newBook.fileSize,
-		cover: newBook.cover,
 		addedAt: Date.now()
 	})) as number;
 
@@ -67,6 +66,13 @@ export const addBook = async (newBook: NewBook) => {
 		toc: newBook.toc,
 		id: bookId
 	});
+
+	if (newBook.cover) {
+		await tx.objectStore(COVERS_STORE).add({
+			id: bookId,
+			cover: newBook.cover
+		});
+	}
 
 	await tx.done;
 	return bookId;
@@ -99,22 +105,30 @@ export const getBookFromDB = async (bookId: number) => {
 
 export const deleteBookFromDB = async (bookId: number) => {
 	const db = await openLibraryDB;
-	const tx = db.transaction([METADATA_STORE, BOOKS_STORE, PROGRESS_STORE], 'readwrite');
+	const tx = db.transaction(
+		[METADATA_STORE, BOOKS_STORE, PROGRESS_STORE, COVERS_STORE],
+		'readwrite'
+	);
 
 	await tx.objectStore(METADATA_STORE).delete(bookId);
 	await tx.objectStore(BOOKS_STORE).delete(bookId);
 	await tx.objectStore(PROGRESS_STORE).delete(bookId);
+	await tx.objectStore(COVERS_STORE).delete(bookId);
 
 	await tx.done;
 };
 
 export const deleteAllBooksFromDB = async () => {
 	const db = await openLibraryDB;
-	const tx = db.transaction([METADATA_STORE, BOOKS_STORE, PROGRESS_STORE], 'readwrite');
+	const tx = db.transaction(
+		[METADATA_STORE, BOOKS_STORE, PROGRESS_STORE, COVERS_STORE],
+		'readwrite'
+	);
 
 	await tx.objectStore(METADATA_STORE).clear();
 	await tx.objectStore(BOOKS_STORE).clear();
 	await tx.objectStore(PROGRESS_STORE).clear();
+	await tx.objectStore(COVERS_STORE).clear();
 
 	await tx.done;
 };
@@ -122,18 +136,20 @@ export const deleteAllBooksFromDB = async () => {
 export const getLibraryBooks = async (): Promise<LibraryBook[]> => {
 	const db = await openLibraryDB;
 
-	const [metadata, progress] = await Promise.all([
+	const [metadata, progress, covers] = await Promise.all([
 		db.getAll(METADATA_STORE),
-		db.getAll(PROGRESS_STORE)
+		db.getAll(PROGRESS_STORE),
+		db.getAll(COVERS_STORE)
 	]);
 
 	const progressMap = new Map(progress.map((p) => [p.id, p.totalProgress]));
+	const coversMap = new Map(covers.map((c) => [c.id, c.cover]));
 
 	return metadata.map((meta) => ({
 		id: meta.id,
 		title: meta.title,
 		authors: meta.authors,
-		cover: meta.cover,
+		cover: coversMap.get(meta.id),
 		totalProgress: progressMap.get(meta.id) ?? 0
 	}));
 };

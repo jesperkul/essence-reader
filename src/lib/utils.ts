@@ -1,4 +1,4 @@
-import { addBook } from '$lib/db';
+import { addBook, type NewBook } from '$lib/db';
 import { goto, invalidateAll } from '$app/navigation';
 import { shouldSaveStore } from '$lib/stores';
 import { parseEpub } from './services/parse';
@@ -6,20 +6,46 @@ import { page } from '$app/state';
 import { get } from 'svelte/store';
 import { unzip } from 'unzipit';
 import { readingState } from './state/readingState.svelte';
+import type { ActiveBook } from './types';
 
 export const readFile = async (file: File) => {
 	try {
 		if (!file.type.includes('epub') && !file.type.includes('zip')) {
 			throw new Error('File is not of type .epub or .zip');
 		}
+		const { entries } = await unzip(file);
 
-		const { meta, book } = await parseEpub(file);
-		const id = get(shouldSaveStore) ? await addBook(meta, book) : undefined;
+		const parsed = await parseEpub(entries);
+
+		let cover: Blob | undefined;
+		if (parsed.coverPath) {
+			cover = await entries[parsed.coverPath]?.blob();
+		}
+
+		const newBook: NewBook = {
+			title: parsed.title,
+			authors: parsed.authors,
+			identifier: parsed.identifier,
+			spine: parsed.spine,
+			toc: parsed.toc,
+			fileSize: file.size,
+			file: file,
+			cover: cover
+		};
+		const id = get(shouldSaveStore) ? await addBook(newBook) : undefined;
 
 		if (id && page.params.slug === String(id)) return;
 
-		const { entries } = await unzip(file);
-		readingState.setLoaded({ meta, book, entries });
+		const activeBook: ActiveBook = {
+			id,
+			title: parsed.title,
+			authors: parsed.authors,
+			spine: parsed.spine,
+			toc: parsed.toc,
+			entries: entries
+		};
+
+		readingState.setState({ activeBook });
 
 		if (!id && page.url.pathname === '/reading') {
 			// When reading without saving, we need to manually re-run

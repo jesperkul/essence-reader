@@ -1,19 +1,4 @@
-export type Book = {
-	id?: number;
-	spine: string[];
-	toc: TableOfContentsItem[];
-	file: Blob;
-};
-
-export type Metadata = {
-	id?: number;
-	title: string;
-	authors: string[];
-	cover: Blob | undefined;
-	identifier: string;
-	fileSize?: number;
-	addedAt?: number;
-};
+import type { ZipInfo } from 'unzipit';
 
 export interface Progress {
 	spineIndex: number;
@@ -41,4 +26,13 @@ export interface LibraryBook {
 	authors: string[];
 	cover: Blob | undefined;
 	totalProgress: number;
+}
+
+export interface ActiveBook {
+	id?: number;
+	title: string;
+	authors: string[];
+	spine: string[];
+	toc: TableOfContentsItem[];
+	entries: ZipInfo['entries'];
 }

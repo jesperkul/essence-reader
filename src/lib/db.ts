@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import type { Book, LibraryBook, Metadata, Progress } from '$lib/types';
+import type { LibraryBook, Progress, TableOfContentsItem } from '$lib/types';
 
 const DB_NAME = 'libraryDB';
 const DB_VERSION = 1;
@@ -26,28 +26,45 @@ const openLibraryDB = openDB(DB_NAME, DB_VERSION, {
 	}
 });
 
-export const addBook = async (metadata: Metadata, book: Book) => {
+export interface NewBook {
+	title: string;
+	authors: string[];
+	identifier: string;
+	spine: string[];
+	toc: TableOfContentsItem[];
+	fileSize: number;
+	file: Blob;
+	cover?: Blob;
+}
+
+export const addBook = async (newBook: NewBook) => {
 	const db = await openLibraryDB;
 	const tx = db.transaction([METADATA_STORE, BOOKS_STORE], 'readwrite');
 
 	const sameIdentifier = await tx
 		.objectStore(METADATA_STORE)
 		.index('identifier')
-		.getAll(metadata.identifier);
+		.getAll(newBook.identifier);
 
 	const alreadySaved = sameIdentifier.find(
-		(item) => item.fileSize === metadata.fileSize && item.title === metadata.title
+		(existing) => existing.fileSize === newBook.fileSize && existing.title === newBook.title
 	);
 
 	if (alreadySaved) return alreadySaved.id;
 
 	const bookId = (await tx.objectStore(METADATA_STORE).add({
-		...metadata,
+		title: newBook.title,
+		authors: newBook.authors,
+		identifier: newBook.identifier,
+		fileSize: newBook.fileSize,
+		cover: newBook.cover,
 		addedAt: Date.now()
 	})) as number;
 
 	await tx.objectStore(BOOKS_STORE).add({
-		...book,
+		file: newBook.file,
+		spine: newBook.spine,
+		toc: newBook.toc,
 		id: bookId
 	});
 
@@ -66,7 +83,18 @@ export const getBookFromDB = async (bookId: number) => {
 	]);
 	await tx.done;
 
-	return { meta: metadata, book, progress };
+	if (!metadata || !book) throw new Error(`Book with ID ${bookId} not found in the database`);
+
+	return {
+		id: bookId,
+		title: metadata.title,
+		authors: metadata.authors,
+		identifier: metadata.identifier,
+		spine: book.spine,
+		toc: book.toc,
+		file: book.file,
+		progress: progress
+	};
 };
 
 export const deleteBookFromDB = async (bookId: number) => {

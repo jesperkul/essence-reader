@@ -1,5 +1,5 @@
-import { unzip } from 'unzipit';
-import type { Metadata, Book, TableOfContentsItem } from '$lib/types';
+import { type ZipInfo } from 'unzipit';
+import type { TableOfContentsItem } from '$lib/types';
 import { relativeToAbs, removeHash } from '$lib/utils';
 const domParser = new DOMParser();
 
@@ -118,20 +118,22 @@ const parseContainer = (containerFileContent: string): string => {
 	return opfPath;
 };
 
-export const parseEpub = async (epub: File): Promise<{ meta: Metadata; book: Book }> => {
-	try {
-		const { entries } = await unzip(epub);
+interface ParserResult {
+	title: string;
+	authors: string[];
+	identifier: string;
+	coverPath?: string;
+	spine: string[];
+	toc: TableOfContentsItem[];
+}
 
+export const parseEpub = async (entries: ZipInfo['entries']): Promise<ParserResult> => {
+	try {
 		const container = await entries['META-INF/container.xml'].text();
 		const opfPath = parseContainer(container);
 		const opf = await entries[opfPath].text();
 
 		const { title, authors, identifier, coverPath, spine, ncxPath } = parseOpf(opf, opfPath);
-
-		let cover: Blob | undefined;
-		if (coverPath) {
-			cover = await entries[coverPath].blob();
-		}
 
 		let toc: TableOfContentsItem[] = [];
 		if (ncxPath) {
@@ -140,10 +142,7 @@ export const parseEpub = async (epub: File): Promise<{ meta: Metadata; book: Boo
 			toc = parseToc(ncx, ncxPath, spine);
 		}
 
-		const meta: Metadata = { title, authors, identifier, cover };
-		const book: Book = { spine, toc, file: epub };
-
-		return { meta, book };
+		return { title, authors, identifier, coverPath, spine, toc };
 	} catch (e) {
 		console.error(e);
 		if (e instanceof Error) {

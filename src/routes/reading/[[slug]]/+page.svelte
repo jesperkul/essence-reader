@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import type { Book, Metadata, ReaderSettings } from '$lib/types';
+	import type { ReaderSettings } from '$lib/types';
 	import Topbar from '$lib/components/Topbar.svelte';
 	import ReaderSettingsComponent from './ReaderSettings.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import { assembleChapter } from './reader';
 	import { themeStore } from '$lib/stores';
 	import { readingState } from '$lib/state/readingState.svelte.js';
-	import type { ZipInfo } from 'unzipit';
 	import { saveProgressToDB } from '$lib/db.js';
 	import TocNode from './TocNode.svelte';
 	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
@@ -23,9 +22,7 @@
 	import CarbonDirectionLoopLeft from '~icons/carbon/direction-loop-left';
 
 	const { data } = $props();
-	let meta: Metadata = $derived(data.meta);
-	let book: Book = $derived(data.book);
-	let entries: ZipInfo['entries'] = $derived(data.entries);
+	const book = $derived(data.book);
 
 	let progressPercent = $derived(Math.round(readingState.totalProgress * 100));
 	let toneTopbar = $state(false);
@@ -48,7 +45,7 @@
 	let blobUrls: string[] = [];
 	let saveProgressTimeout: number;
 
-	const sectionWeights = $derived(book.spine.map((path) => entries[path]?.size || 0));
+	const sectionWeights = $derived(book.spine.map((path) => book.entries[path]?.size || 0));
 
 	const weightBeforeSection = $derived.by(() => {
 		let total = 0;
@@ -62,7 +59,7 @@
 	const totalBookWeight = $derived(sectionWeights.reduce((a, b) => a + b, 0));
 
 	const saveProgress = async () => {
-		if (!meta.id) return;
+		if (!book.id) return;
 
 		const progress = {
 			spineIndex: readingState.spineIndex,
@@ -73,7 +70,7 @@
 		clearTimeout(saveProgressTimeout);
 
 		try {
-			await saveProgressToDB(meta.id, progress);
+			await saveProgressToDB(book.id, progress);
 		} catch (err) {
 			console.error('Failed to save progress:', err);
 		}
@@ -93,7 +90,7 @@
 		readingState.sectionProgress = sectionProgress;
 		readingState.totalProgress = newTotalProgress;
 
-		if (!meta.id) return;
+		if (!book.id) return;
 		clearTimeout(saveProgressTimeout);
 		saveProgressTimeout = setTimeout(() => {
 			saveProgress();
@@ -230,7 +227,7 @@
 
 			let chapterHTML = await assembleChapter(
 				book.spine[index],
-				entries,
+				book.entries,
 				registerBlobUrl,
 				readerCSS,
 				rootAttributes
@@ -291,7 +288,7 @@
 
 <svelte:head>
 	<title>
-		{meta.title + ' - ' + meta.authors.join(', ')}
+		{book.title + ' - ' + book.authors.join(', ')}
 	</title>
 </svelte:head>
 
@@ -305,8 +302,8 @@
 
 		{#snippet toptext()}
 			<h4>
-				<b>{meta.title} - </b>
-				{meta.authors.join(', ')}
+				<b>{book.title} - </b>
+				{book.authors.join(', ')}
 			</h4>
 			<p>{progressPercent}%</p>
 		{/snippet}

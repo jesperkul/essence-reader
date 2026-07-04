@@ -21,15 +21,16 @@ export const load = (async ({ params }) => {
 
 	const db = await openLibraryDB;
 
-	const tx = db.transaction(['metadata', 'books'], 'readonly');
+	const tx = db.transaction(['metadata', 'books', 'progress'], 'readonly');
 	const meta = await tx.objectStore('metadata').get(slugID);
 	const book = await tx.objectStore('books').get(slugID);
+	const progress = await tx.objectStore('progress').get(slugID);
 	await tx.done;
 
 	if (!book) error(404, `Book with ID ${slugID} not found in your library`);
 
 	const { entries } = await unzip(book.file);
-	const stored = { meta, book, entries };
+	const stored = { meta, book, entries, progress };
 	readingState.setLoaded(stored);
 
 	return stored;

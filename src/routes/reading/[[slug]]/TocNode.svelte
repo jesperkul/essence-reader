@@ -5,8 +5,8 @@
 	let {
 		tocitem,
 		onClick,
-		currentSection
-	}: { tocitem: TableOfContentsItem; onClick: (href: string) => void; currentSection: number } =
+		spineIndex
+	}: { tocitem: TableOfContentsItem; onClick: (href: string) => void; spineIndex: number } =
 		$props();
 
 	const toggleExpansion = (e: Event) => {
@@ -19,10 +19,10 @@
 	let selected: boolean = $state(false);
 
 	$effect(() => {
-		if (tocitem.index === currentSection) {
+		if (tocitem.index === spineIndex) {
 			selected = true;
 		} else if (tocitem.children) {
-			selected = tocitem.children.some((child) => child.index === currentSection);
+			selected = tocitem.children.some((child) => child.index === spineIndex);
 			if (selected) expanded = true; // Auto-Expanded if any child is selected
 		} else {
 			selected = false;
@@ -41,7 +41,7 @@
 {#if expanded && tocitem.children}
 	<div style="margin-left: 1em;">
 		{#each tocitem.children as tocsection}
-			<TocNode tocitem={tocsection} {onClick} {currentSection} />
+			<TocNode tocitem={tocsection} {onClick} {spineIndex} />
 		{/each}
 	</div>
 {/if}

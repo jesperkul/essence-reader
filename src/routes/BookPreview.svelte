@@ -21,7 +21,7 @@
 	<div class="bookInfo">
 		<h4>{meta.authors.join(', ')}</h4>
 		<h3>{meta.title}</h3>
-		<p>{meta.progress} / {meta.length}</p>
+		<!-- <p>{meta.progress} / {meta.length}</p> -->
 	</div>
 </div>
 

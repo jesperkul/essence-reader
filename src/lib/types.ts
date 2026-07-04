@@ -10,12 +10,16 @@ export type Metadata = {
 	title: string;
 	authors: string[];
 	cover: Blob | undefined;
-	progress: number;
-	length: number;
 	identifier: string;
 	fileSize?: number;
 	addedAt?: number;
 };
+
+export interface Progress {
+	spineIndex: number;
+	sectionProgress: number;
+	totalProgress: number;
+}
 
 export type TableOfContentsItem = {
 	title: string;

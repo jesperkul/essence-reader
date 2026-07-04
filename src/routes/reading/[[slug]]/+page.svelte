@@ -9,7 +9,7 @@
 	import { themeStore } from '$lib/stores';
 	import { readingState } from '$lib/state/readingState.svelte.js';
 	import type { ZipInfo } from 'unzipit';
-	import { openLibraryDB } from '$lib/db.js';
+	import { saveProgressToDb } from '$lib/db.js';
 	import TocNode from './TocNode.svelte';
 	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
 	import { relativeToAbs } from '$lib/utils.js';
@@ -46,6 +46,7 @@
 	);
 
 	let blobUrls: string[] = [];
+	let saveProgressTimeout: number;
 
 	const sectionWeights = $derived(book.spine.map((path) => entries[path]?.size || 0));
 
@@ -60,6 +61,24 @@
 
 	const totalBookWeight = $derived(sectionWeights.reduce((a, b) => a + b, 0));
 
+	const saveProgress = async () => {
+		if (!meta.id) return;
+
+		const progress = {
+			spineIndex: readingState.spineIndex,
+			sectionProgress: readingState.sectionProgress,
+			totalProgress: readingState.totalProgress
+		};
+
+		clearTimeout(saveProgressTimeout);
+
+		try {
+			await saveProgressToDb(meta.id, progress);
+		} catch (err) {
+			console.error('Failed to save progress:', err);
+		}
+	};
+
 	let updateProgress = (sectionProgress: number) => {
 		const shouldToneTopbar = !settings.paginated && sectionProgress > 0;
 		if (shouldToneTopbar !== toneTopbar) {
@@ -67,12 +86,18 @@
 		}
 
 		const currentWeight =
-			weightBeforeSection[readingState.sectionIndex] +
-			sectionProgress * sectionWeights[readingState.sectionIndex];
+			weightBeforeSection[readingState.spineIndex] +
+			sectionProgress * sectionWeights[readingState.spineIndex];
 		const newTotalProgress = totalBookWeight > 0 ? currentWeight / totalBookWeight : 0;
 
 		readingState.sectionProgress = sectionProgress;
 		readingState.totalProgress = newTotalProgress;
+
+		if (!meta.id) return;
+		clearTimeout(saveProgressTimeout);
+		saveProgressTimeout = setTimeout(() => {
+			saveProgress();
+		}, 5000);
 	};
 
 	onMount(() => {
@@ -92,20 +117,21 @@
 		untrack(() => {
 			if (frame) {
 				previousJumps = [];
-				updateSection(meta.progress);
+				updateSection(readingState.spineIndex);
 			}
 		});
 	});
 
 	onDestroy(() => {
 		blobUrls.forEach(URL.revokeObjectURL);
+		saveProgress();
 	});
 
 	const handleSectionChange = (direction: number) => {
-		if (direction < 0 && readingState.sectionIndex > 0) {
-			updateSection(readingState.sectionIndex - 1, { type: 'end' });
-		} else if (direction > 0 && readingState.sectionIndex + 1 < book.spine.length) {
-			updateSection(readingState.sectionIndex + 1, { type: 'start' });
+		if (direction < 0 && readingState.spineIndex > 0) {
+			updateSection(readingState.spineIndex - 1, { type: 'end' });
+		} else if (direction > 0 && readingState.spineIndex + 1 < book.spine.length) {
+			updateSection(readingState.spineIndex + 1, { type: 'start' });
 		}
 	};
 
@@ -116,11 +142,7 @@
 			blobUrls.forEach(URL.revokeObjectURL);
 			blobUrls = [];
 
-			readingState.sectionIndex = index;
-			meta.progress = index;
-			if (meta.id) {
-				(await openLibraryDB).put('metadata', $state.snapshot(meta));
-			}
+			readingState.spineIndex = index;
 
 			const computedStyles = getComputedStyle(document.documentElement);
 			const primaryColor = computedStyles.getPropertyValue('--primary-color') || '0, 0, 0';
@@ -219,22 +241,22 @@
 	};
 
 	const jumpTo = async (href: string) => {
-		previousJumps = [...previousJumps, readingState.sectionIndex];
+		previousJumps = [...previousJumps, readingState.spineIndex];
 		const [chapterPath, elemId] = href.split('#');
 
-		let targetIndex = readingState.sectionIndex;
+		let targetIndex = readingState.spineIndex;
 		if (chapterPath) {
 			targetIndex = book.spine.indexOf(chapterPath);
 
 			if (targetIndex === -1) {
-				const absPath = relativeToAbs(chapterPath, book.spine[readingState.sectionIndex]);
+				const absPath = relativeToAbs(chapterPath, book.spine[readingState.spineIndex]);
 				targetIndex = book.spine.indexOf(absPath);
 			}
 		}
 
 		const target: ReaderTarget = elemId ? { type: 'element', id: elemId } : { type: 'start' };
 
-		if (targetIndex === readingState.sectionIndex) {
+		if (targetIndex === readingState.spineIndex) {
 			frame?.goToTarget(target);
 			return;
 		}
@@ -310,7 +332,7 @@
 					<CarbonTableOfContents />
 				{/snippet}
 				{#each book.toc as tocitem}
-					<TocNode {tocitem} onClick={jumpTo} currentSection={readingState.sectionIndex} />
+					<TocNode {tocitem} onClick={jumpTo} spineIndex={readingState.spineIndex} />
 				{/each}
 			</Drawer>
 			<Drawer>
@@ -329,7 +351,10 @@
 	</div>
 </div>
 
-<svelte:window onresize={() => frame?.onResize()} onkeydown={handleKeydown} />
+<svelte:window
+	onresize={() => frame?.onResize()}
+	onkeydown={handleKeydown}
+	onbeforeunload={saveProgress} />
 
 <style>
 	.iframe-container {

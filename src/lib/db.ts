@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import type { Book, Metadata } from '$lib/types';
+import type { Book, Metadata, Progress } from '$lib/types';
 
 const DB_NAME = 'libraryDB';
 const DB_VERSION = 1;
@@ -58,4 +58,9 @@ export const addBook = async (metadata: Metadata, book: Book) => {
 export const getAllMetas = async (): Promise<Metadata[]> => {
 	const db = await openLibraryDB;
 	return await db.getAll(METADATA_STORE);
+};
+
+export const saveProgressToDb = async (bookId: number, progress: Progress) => {
+	const db = await openLibraryDB;
+	await db.put(PROGRESS_STORE, { id: bookId, ...progress, updatedAt: Date.now() });
 };

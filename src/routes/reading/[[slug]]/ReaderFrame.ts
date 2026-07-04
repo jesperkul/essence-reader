@@ -48,7 +48,6 @@ export class ReaderFrame {
 					this.goToPage(0);
 				}
 
-				this.updateProgress();
 				resolve();
 			};
 

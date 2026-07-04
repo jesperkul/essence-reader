@@ -9,7 +9,7 @@
 	import { themeStore } from '$lib/stores';
 	import { readingState } from '$lib/state/readingState.svelte.js';
 	import type { ZipInfo } from 'unzipit';
-	import { saveProgressToDb } from '$lib/db.js';
+	import { saveProgressToDB } from '$lib/db.js';
 	import TocNode from './TocNode.svelte';
 	import { ReaderFrame, type ReaderTarget } from './ReaderFrame.js';
 	import { relativeToAbs } from '$lib/utils.js';
@@ -73,7 +73,7 @@
 		clearTimeout(saveProgressTimeout);
 
 		try {
-			await saveProgressToDb(meta.id, progress);
+			await saveProgressToDB(meta.id, progress);
 		} catch (err) {
 			console.error('Failed to save progress:', err);
 		}

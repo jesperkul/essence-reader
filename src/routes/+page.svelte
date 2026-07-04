@@ -11,7 +11,7 @@
 	import BookPreview from './BookPreview.svelte';
 	import CarbonTrashCan from '~icons/carbon/trash-can';
 	import CarbonSave from '~icons/carbon/save';
-	import { getLibraryBooks, openLibraryDB } from '$lib/db.js';
+	import { getLibraryBooks, deleteBookFromDB, deleteAllBooksFromDB } from '$lib/db.js';
 
 	const clickFile = async () => {
 		let input = document.createElement('input');
@@ -35,12 +35,7 @@
 	const deleteBook = async (id: number) => {
 		libraryBooks = libraryBooks.filter((book) => book.id !== id);
 		try {
-			const db = await openLibraryDB;
-			const tx = db.transaction(['metadata', 'books', 'progress'], 'readwrite');
-			tx.objectStore('metadata').delete(id);
-			tx.objectStore('books').delete(id);
-			tx.objectStore('progress').delete(id);
-			await tx.done;
+			await deleteBookFromDB(id);
 		} catch (error) {
 			console.error('Failed to delete book:', error);
 		}
@@ -49,12 +44,7 @@
 	const deleteAllBooks = async () => {
 		libraryBooks = [];
 		try {
-			const db = await openLibraryDB;
-			const tx = db.transaction(['metadata', 'books', 'progress'], 'readwrite');
-			tx.objectStore('metadata').clear();
-			tx.objectStore('books').clear();
-			tx.objectStore('progress').clear();
-			await tx.done;
+			await deleteAllBooksFromDB();
 		} catch (error) {
 			console.error('Failed to delete all books:', error);
 		}

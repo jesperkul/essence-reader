@@ -1,5 +1,5 @@
 export const prerender = false;
-import { openLibraryDB } from '$lib/db.js';
+import { getBookFromDB } from '$lib/db.js';
 import { readingState } from '$lib/state/readingState.svelte';
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
@@ -19,13 +19,7 @@ export const load = (async ({ params }) => {
 		error(400, 'Invalid or non-numeric book ID provided');
 	}
 
-	const db = await openLibraryDB;
-
-	const tx = db.transaction(['metadata', 'books', 'progress'], 'readonly');
-	const meta = await tx.objectStore('metadata').get(slugID);
-	const book = await tx.objectStore('books').get(slugID);
-	const progress = await tx.objectStore('progress').get(slugID);
-	await tx.done;
+	const { meta, book, progress } = await getBookFromDB(slugID);
 
 	if (!book) error(404, `Book with ID ${slugID} not found in your library`);
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { shouldSaveStore } from '$lib/stores';
-	import type { Metadata } from '$lib/types';
+	import type { LibraryBook } from '$lib/types';
 	import { onMount } from 'svelte';
 	import Topbar from '$lib/components/Topbar.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
@@ -11,7 +11,7 @@
 	import BookPreview from './BookPreview.svelte';
 	import CarbonTrashCan from '~icons/carbon/trash-can';
 	import CarbonSave from '~icons/carbon/save';
-	import { getAllMetas, openLibraryDB } from '$lib/db.js';
+	import { getLibraryBooks, openLibraryDB } from '$lib/db.js';
 
 	const clickFile = async () => {
 		let input = document.createElement('input');
@@ -23,22 +23,23 @@
 			const files = (e.target as HTMLInputElement).files;
 			if (!files) return;
 			for (const file of files) {
-				readFile(file); // Perhaps want to pass saveBooksOn here
+				readFile(file);
 			}
 		};
 
 		input.click();
 	};
 
-	let bookList: Metadata[] = $state([]);
+	let libraryBooks: LibraryBook[] = $state([]);
 
 	const deleteBook = async (id: number) => {
-		bookList = bookList.filter((book) => book.id !== id);
+		libraryBooks = libraryBooks.filter((book) => book.id !== id);
 		try {
 			const db = await openLibraryDB;
-			const tx = db.transaction(['metadata', 'books'], 'readwrite');
+			const tx = db.transaction(['metadata', 'books', 'progress'], 'readwrite');
 			tx.objectStore('metadata').delete(id);
 			tx.objectStore('books').delete(id);
+			tx.objectStore('progress').delete(id);
 			await tx.done;
 		} catch (error) {
 			console.error('Failed to delete book:', error);
@@ -46,12 +47,13 @@
 	};
 
 	const deleteAllBooks = async () => {
-		bookList = [];
+		libraryBooks = [];
 		try {
 			const db = await openLibraryDB;
-			const tx = db.transaction(['metadata', 'books'], 'readwrite');
+			const tx = db.transaction(['metadata', 'books', 'progress'], 'readwrite');
 			tx.objectStore('metadata').clear();
 			tx.objectStore('books').clear();
+			tx.objectStore('progress').clear();
 			await tx.done;
 		} catch (error) {
 			console.error('Failed to delete all books:', error);
@@ -59,8 +61,8 @@
 	};
 
 	onMount(async () => {
-		getAllMetas().then((books) => {
-			bookList = books;
+		getLibraryBooks().then((books) => {
+			libraryBooks = books;
 		});
 	});
 </script>
@@ -100,13 +102,13 @@
 </Topbar>
 
 <div id="parent">
-	{#if bookList}
-		{#each bookList as meta (meta.id)}
+	{#if libraryBooks}
+		{#each libraryBooks as book (book.id)}
 			<button
 				class="libraryItem"
-				onclick={() => goto(`reading/${meta.id}`)}
+				onclick={() => goto(`reading/${book.id}`)}
 				animate:flip={{ duration: 200 }}>
-				<BookPreview {meta} {deleteBook} />
+				<BookPreview {book} {deleteBook} />
 			</button>
 		{/each}
 	{/if}

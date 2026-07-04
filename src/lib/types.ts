@@ -34,3 +34,11 @@ export interface ReaderSettings {
 	paginated: boolean;
 	animations: boolean;
 }
+
+export interface LibraryBook {
+	id: number;
+	title: string;
+	authors: string[];
+	cover: Blob | undefined;
+	totalProgress: number;
+}

@@ -1,9 +1,22 @@
 <script lang="ts">
-	import type { Metadata } from '$lib/types';
+	import type { LibraryBook } from '$lib/types';
 	import CarbonTrashCan from '~icons/carbon/trash-can';
 	import { fade } from 'svelte/transition';
 
-	let { meta, deleteBook }: { meta: Metadata; deleteBook: (id: number) => void } = $props();
+	let { book, deleteBook }: { book: LibraryBook; deleteBook: (id: number) => void } = $props();
+
+	let progressPercent = $derived(Math.round(book.totalProgress * 100));
+	let bookCoverUrl = $state('');
+
+	$effect(() => {
+		if (book.cover) {
+			const url = URL.createObjectURL(book.cover);
+			bookCoverUrl = url;
+			return () => URL.revokeObjectURL(url);
+		} else {
+			bookCoverUrl = '';
+		}
+	});
 </script>
 
 <div class="book" in:fade={{ duration: 200 }}>
@@ -11,17 +24,17 @@
 		class="deleteBtn"
 		onclick={(e) => {
 			e.stopPropagation();
-			if (meta.id) deleteBook(meta.id);
+			if (book.id) deleteBook(book.id);
 		}}>
 		<CarbonTrashCan />
 	</button>
 
-	<img src={meta.cover !== undefined ? URL.createObjectURL(meta.cover) : ''} alt="cover" />
+	<img src={bookCoverUrl} alt="cover" />
 
 	<div class="bookInfo">
-		<h4>{meta.authors.join(', ')}</h4>
-		<h3>{meta.title}</h3>
-		<!-- <p>{meta.progress} / {meta.length}</p> -->
+		<h4>{book.authors.join(', ')}</h4>
+		<h3>{book.title}</h3>
+		<p>{progressPercent}%</p>
 	</div>
 </div>
 

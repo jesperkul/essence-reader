@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import type { Book, Metadata, Progress } from '$lib/types';
+import type { Book, LibraryBook, Metadata, Progress } from '$lib/types';
 
 const DB_NAME = 'libraryDB';
 const DB_VERSION = 1;
@@ -55,9 +55,21 @@ export const addBook = async (metadata: Metadata, book: Book) => {
 	return bookId;
 };
 
-export const getAllMetas = async (): Promise<Metadata[]> => {
+export const getLibraryBooks = async (): Promise<LibraryBook[]> => {
 	const db = await openLibraryDB;
-	return await db.getAll(METADATA_STORE);
+
+	const metadata = await db.getAll(METADATA_STORE);
+	const progress = await db.getAll(PROGRESS_STORE);
+
+	const progressMap = new Map(progress.map((p) => [p.id, p.totalProgress]));
+
+	return metadata.map((meta) => ({
+		id: meta.id,
+		title: meta.title,
+		authors: meta.authors,
+		cover: meta.cover,
+		totalProgress: progressMap.get(meta.id) ?? 0
+	}));
 };
 
 export const saveProgressToDb = async (bookId: number, progress: Progress) => {

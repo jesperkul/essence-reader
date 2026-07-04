@@ -67,7 +67,8 @@ export const assembleChapter = async (
 			}
 		} else {
 			const styleE = newHTML.createElement('style');
-			styleE.innerHTML = e.innerHTML;
+			const css = await processCSS(e.innerHTML, chapterPath, entries, registerBlobUrl);
+			styleE.innerHTML = css;
 			newHTML.head.appendChild(styleE);
 		}
 
@@ -92,8 +93,10 @@ export const assembleChapter = async (
 
 			// Fixes some SVGs not playing nicely
 			if (e.parentElement?.tagName.toLowerCase() === 'svg') {
-				e.parentElement?.setAttribute('height', 'auto');
-				e.parentElement?.setAttribute('width', 'auto');
+				e.parentElement.removeAttribute('width');
+				e.parentElement.removeAttribute('height');
+				e.parentElement.style.width = 'auto';
+				e.parentElement.style.height = 'auto';
 			}
 		}
 	}

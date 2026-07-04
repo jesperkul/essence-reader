@@ -20,6 +20,16 @@
 </script>
 
 <div class="book" in:fade={{ duration: 200 }}>
+	<a href={`reading/${book.id}`} class="bookLink">
+		<img class="bookCover" src={bookCoverUrl} alt="cover" />
+
+		<div class="bookInfo">
+			<h4>{book.authors?.join(', ')}</h4>
+			<h3>{book.title}</h3>
+			<p>{progressPercent}%</p>
+		</div>
+	</a>
+
 	<button
 		class="deleteBtn"
 		onclick={(e) => {
@@ -28,40 +38,33 @@
 		}}>
 		<CarbonTrashCan />
 	</button>
-
-	<img src={bookCoverUrl} alt="cover" />
-
-	<div class="bookInfo">
-		<h4>{book.authors.join(', ')}</h4>
-		<h3>{book.title}</h3>
-		<p>{progressPercent}%</p>
-	</div>
 </div>
 
 <style>
-	.book {
+	.bookLink {
 		width: 100%;
+		height: 100%;
 		display: grid;
-		padding: 0;
 		grid-template-columns: auto 1fr;
+		text-decoration: none;
+		color: inherit;
+		text-align: center;
+		outline: none;
 	}
 
-	.book > img,
-	.book > div {
+	.bookCover {
 		height: 15em;
 		width: 10em;
 		object-fit: cover;
-	}
-
-	.book > img {
 		background-color: gray;
 	}
 
 	.deleteBtn {
 		display: none;
 		position: absolute;
-		background-color: transparent;
+		top: 0;
 		right: 0;
+		background-color: transparent;
 		font-size: 1.3em;
 		padding: 0.25em;
 		border-radius: 0 0.5em;
@@ -83,9 +86,5 @@
 	.bookInfo > h3 {
 		font-weight: 500;
 		color: gray;
-	}
-
-	.bookInfo {
-		min-width: 100%;
 	}
 </style>

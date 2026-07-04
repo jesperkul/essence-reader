@@ -91,23 +91,20 @@
 	{/snippet}
 </Topbar>
 
-<div id="parent">
+<div id="parent" data-sveltekit-preload-data="false">
 	{#if libraryBooks}
 		{#each libraryBooks as book (book.id)}
-			<button
-				class="libraryItem"
-				onclick={() => goto(`reading/${book.id}`)}
-				animate:flip={{ duration: 200 }}>
+			<div class="libraryItem" animate:flip={{ duration: 200 }}>
 				<BookPreview {book} {deleteBook} />
-			</button>
+			</div>
 		{/each}
 	{/if}
-
-	<button class="libraryItem" onclick={() => clickFile()}>
-		<h1 id="dropInfoIcon">📚</h1>
-
-		<h2 style="color: gray">Drop anywhere or click to select a file</h2>
-	</button>
+	<div class="libraryItem">
+		<button class="selectBtn" onclick={() => clickFile()}>
+			<h1 id="dropInfoIcon">📚</h1>
+			<h2>Drop anywhere or click to select a file</h2>
+		</button>
+	</div>
 </div>
 
 <style>
@@ -125,14 +122,11 @@
 	}
 
 	.libraryItem {
-		color: inherit;
-		border: none;
 		overflow: hidden;
 		font-size: inherit;
 		font-family: inherit;
 		flex: 1 1 100%;
 		height: 15em;
-		padding: 0;
 		max-width: 30vw;
 		min-width: 20em;
 		border-radius: 0.5em;
@@ -141,10 +135,26 @@
 		transition: transform 0.25s;
 	}
 
+	.selectBtn {
+		all: unset;
+		height: 100%;
+		width: 100%;
+		text-align: center;
+	}
+
+	.selectBtn h2 {
+		font-weight: 500;
+		color: gray;
+	}
+
 	.libraryItem:hover,
-	.libraryItem:focus {
+	.libraryItem:focus-within {
 		cursor: pointer;
 		transform: translateY(-0.5em);
+	}
+
+	.libraryItem:focus-within {
+		outline: 2px solid rgba(var(--primary-color), 0.5);
 	}
 
 	.librarySettings {

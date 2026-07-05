@@ -63,7 +63,7 @@ export const readFile = async (file: File) => {
 
 export const relativeToAbs = (href: string, relativeTo: string) => {
 	const url = new URL(href, `http://localhost/${relativeTo}`);
-	return decodeURI(url.pathname.slice(1));
+	return decodeURI(url.pathname.slice(1) + url.hash);
 };
 
 export const removeHash = (path: string) => {

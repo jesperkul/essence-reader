@@ -114,7 +114,10 @@
 		untrack(() => {
 			if (frame) {
 				previousJumps = [];
-				updateSection(readingState.spineIndex);
+				updateSection(readingState.spineIndex, {
+					type: 'progress',
+					progress: readingState.sectionProgress
+				});
 			}
 		});
 	});

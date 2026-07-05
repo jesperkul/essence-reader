@@ -1,6 +1,10 @@
 import type { ReaderSettings } from '$lib/types';
 
-export type ReaderTarget = { type: 'start' } | { type: 'end' } | { type: 'element'; id: string };
+export type ReaderTarget =
+	| { type: 'start' }
+	| { type: 'end' }
+	| { type: 'element'; id: string }
+	| { type: 'progress'; progress: number };
 
 export interface ReaderFrameOptions {
 	onKeydown: (data: { key: string }) => void;
@@ -42,13 +46,14 @@ export class ReaderFrame {
 			const handleLoad = () => {
 				this.addListeners();
 
-				if (target) {
-					this.goToTarget(target);
-				} else {
-					this.goToPage(0);
-				}
-
-				resolve();
+				requestAnimationFrame(() => {
+					if (target) {
+						this.goToTarget(target);
+					} else {
+						this.goToPage(0);
+					}
+					resolve();
+				});
 			};
 
 			this.iframe.addEventListener('load', handleLoad, { once: true });
@@ -89,18 +94,22 @@ export class ReaderFrame {
 
 		switch (target.type) {
 			case 'start': {
-				this.goToPage(0);
+				this.goToPage(0, true);
 				break;
 			}
 			case 'end': {
 				const lastPage = Math.max(0, this.getPageCount() - 1);
-				this.goToPage(lastPage);
+				this.goToPage(lastPage, true);
 				break;
 			}
 			case 'element': {
 				const el = iframeDocument.getElementById(target.id);
 				if (!el) return;
 				this.goToElement(el);
+				break;
+			}
+			case 'progress': {
+				this.goToProgress(target.progress);
 				break;
 			}
 		}
@@ -241,7 +250,7 @@ export class ReaderFrame {
 		return Math.max(1, Math.ceil(total / width));
 	}
 
-	private goToPage(page: number) {
+	private goToPage(page: number, instant = false) {
 		const width = this.getClientWidth();
 		const lastPage = Math.max(0, this.getPageCount() - 1);
 
@@ -249,7 +258,7 @@ export class ReaderFrame {
 
 		this.iframe.contentWindow?.scrollTo({
 			left: this.currentPage * width,
-			behavior: this.settings?.animations ? 'smooth' : 'instant'
+			behavior: instant || !this.settings?.animations ? 'instant' : 'smooth'
 		});
 
 		this.updateProgress();
@@ -262,6 +271,24 @@ export class ReaderFrame {
 			this.goToPage(page);
 		} else {
 			el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' });
+		}
+	}
+
+	private goToProgress(progress: number) {
+		const clampedProgress = Math.max(0, Math.min(1, progress));
+		if (this.settings?.paginated) {
+			const pageCount = this.getPageCount();
+			const page = pageCount > 1 ? Math.round(clampedProgress * (pageCount - 1)) : 0;
+			this.goToPage(page, true);
+		} else {
+			const iframeDocument = this.iframe.contentWindow?.document.documentElement;
+			if (!iframeDocument) return;
+
+			const maxScroll = iframeDocument.scrollHeight - iframeDocument.clientHeight;
+			this.iframe.contentWindow?.scrollTo({
+				top: clampedProgress * maxScroll,
+				behavior: 'instant'
+			});
 		}
 	}
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import type { ReaderSettings } from '$lib/types';
+	import type { Progress, ReaderSettings } from '$lib/types';
 	import Topbar from '$lib/components/Topbar.svelte';
 	import ReaderSettingsComponent from './ReaderSettings.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
@@ -26,7 +26,7 @@
 
 	let progressPercent = $derived(Math.round(readingState.totalProgress * 100));
 	let toneTopbar = $state(false);
-	let previousJumps: number[] = $state([]);
+	let previousJumps: Progress[] = $state([]);
 	let iframeElement: HTMLIFrameElement | undefined = $state();
 	let frame: ReaderFrame | undefined = $state();
 
@@ -241,7 +241,14 @@
 	};
 
 	const jumpTo = async (href: string) => {
-		previousJumps = [...previousJumps, readingState.spineIndex];
+		previousJumps = [
+			...previousJumps,
+			{
+				spineIndex: readingState.spineIndex,
+				sectionProgress: readingState.sectionProgress,
+				totalProgress: readingState.totalProgress
+			}
+		];
 		const [chapterPath, elemId] = href.split('#');
 
 		let targetIndex = readingState.spineIndex;
@@ -320,11 +327,14 @@
 						let lastJump = previousJumps.pop();
 						previousJumps = previousJumps;
 						if (lastJump !== undefined) {
-							updateSection(lastJump);
+							updateSection(lastJump.spineIndex, {
+								type: 'progress',
+								progress: lastJump.sectionProgress
+							});
 						}
 					}}>
 					<CarbonDirectionLoopLeft />
-					{previousJumps[previousJumps.length - 1]}
+					{Math.round(previousJumps[previousJumps.length - 1].totalProgress * 100)}%
 				</button>
 			{/if}
 			<Drawer>
@@ -376,8 +386,10 @@
 	}
 
 	#jumpbtn {
+		display: inline-flex;
+		align-items: center;
 		border-radius: 0.25em;
 		font-size: 1em;
-		line-height: 1em;
+		gap: 0.25em;
 	}
 </style>
